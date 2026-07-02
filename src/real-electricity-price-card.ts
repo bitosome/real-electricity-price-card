@@ -1,10 +1,11 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 
-const CARD_VERSION = '0.1.0';
+const CARD_VERSION = '0.1.1';
 const DEFAULT_ENTITY = 'sensor.real_electricity_price_chart_data';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
-const DEFAULT_NAME = 'Electricity Price';
 const DEFAULT_UNIT = '€/kWh';
+
+type SelectorMode = 'hover' | 'click';
 
 const SENSOR_COLOR_KEYS: Record<string, keyof RealElectricityPriceCardConfig> = {
   '#bfdbfe': 'past_color',
@@ -35,6 +36,7 @@ interface RealElectricityPriceCardConfig {
   name?: string;
   chart_type?: 'bar' | 'line';
   graph_type?: 'bar' | 'line';
+  selector_mode?: SelectorMode;
   height?: number;
   horizontal_lines?: number;
   price_decimals?: number;
@@ -157,6 +159,10 @@ function parsePricePoints(entity: HassEntity | undefined): PricePoint[] {
 
 function chartType(config: RealElectricityPriceCardConfig): 'bar' | 'line' {
   return (config.chart_type || config.graph_type) === 'line' ? 'line' : 'bar';
+}
+
+function selectorMode(config: RealElectricityPriceCardConfig): SelectorMode {
+  return config.selector_mode === 'click' ? 'click' : 'hover';
 }
 
 function chartHeight(config: RealElectricityPriceCardConfig): number {
@@ -329,8 +335,8 @@ function normalizeConfig(config: RealElectricityPriceCardConfig): RealElectricit
   return {
     entity: DEFAULT_ENTITY,
     current_price_entity: DEFAULT_CURRENT_PRICE_ENTITY,
-    name: DEFAULT_NAME,
     chart_type: 'bar',
+    selector_mode: 'hover',
     height: 190,
     horizontal_lines: 5,
     price_decimals: 4,
@@ -404,6 +410,8 @@ class RealElectricityPriceCard extends LitElement {
     }
 
     const type = chartType(config);
+    const selector = selectorMode(config);
+    const title = typeof config.name === 'string' ? config.name.trim() : '';
     const box: ChartBox = { width: 360, height: chartHeight(config), left: 8, right: 34, top: 16, bottom: 27 };
     const range = valueRange(rawPoints, config);
     const points = buildChartPoints(rawPoints, box, range, type);
@@ -416,10 +424,12 @@ class RealElectricityPriceCard extends LitElement {
     return html`
       <ha-card class="price-card" style=${`--rep-card-bg:${config.card_background};--rep-chart-bg:${config.chart_background};--rep-grid:${config.grid_color};--rep-marker:${config.marker_color};`}>
         <div class="price-content">
-          <div class="price-head">
-            <button class="price-title" @click=${() => this._openMoreInfo(entityId)}>
-              <span>${config.name || DEFAULT_NAME}</span>
-            </button>
+          <div class=${`price-head${title ? '' : ' price-head-no-title'}`}>
+            ${title ? html`
+              <button class="price-title" @click=${() => this._openMoreInfo(entityId)}>
+                <span>${title}</span>
+              </button>
+            ` : nothing}
             <div class="price-selected">
               <span>${formatDateTime(this.hass, selected.timestamp)}</span>
               <strong>${formatPrice(selected.value, config)}</strong>
@@ -429,7 +439,7 @@ class RealElectricityPriceCard extends LitElement {
           ${config.show_stats === false ? nothing : this._renderStats(config, rawPoints, minPoint, maxPoint, current)}
 
           <div class="price-chart-frame">
-            ${this._renderChart(config, box, points, selected, minPoint, maxPoint, range, type)}
+            ${this._renderChart(config, box, points, selected, minPoint, maxPoint, range, type, selector)}
             <span
               class="price-selected-dot"
               style=${`left:${((selected.x / box.width) * 100).toFixed(2)}%;top:${((selected.y / box.height) * 100).toFixed(2)}%;`}
@@ -486,6 +496,7 @@ class RealElectricityPriceCard extends LitElement {
     maxPoint: ChartPoint,
     range: PriceRange,
     type: 'bar' | 'line',
+    selector: SelectorMode,
   ): TemplateResult {
     const baseline = box.height - box.bottom;
     const zeroY = Math.max(box.top, Math.min(baseline, box.top + ((range.max - 0) / (range.max - range.min)) * (box.height - box.top - box.bottom)));
@@ -505,10 +516,11 @@ class RealElectricityPriceCard extends LitElement {
         preserveAspectRatio="none"
         role="img"
         aria-label="Electricity price chart"
-        @pointerdown=${(ev: PointerEvent) => this._selectPoint(ev, points, box)}
-        @pointermove=${(ev: PointerEvent) => this._selectPoint(ev, points, box)}
+        @pointerdown=${(ev: PointerEvent) => this._selectPoint(ev, points, box, selector)}
+        @pointermove=${(ev: PointerEvent) => this._selectPoint(ev, points, box, selector)}
         @pointerup=${this._stopPointer}
         @pointercancel=${this._stopPointer}
+        @pointerleave=${this._stopPointer}
       >
         <defs>
           <linearGradient id=${gradientId} x1="0" x2="0" y1="0" y2="1">
@@ -601,8 +613,9 @@ class RealElectricityPriceCard extends LitElement {
     `;
   }
 
-  private _selectPoint(ev: PointerEvent, points: ChartPoint[], box: ChartBox): void {
-    if (ev.type === 'pointermove' && !this._dragging) return;
+  private _selectPoint(ev: PointerEvent, points: ChartPoint[], box: ChartBox, selector: SelectorMode): void {
+    const hoverMove = selector === 'hover' && ev.type === 'pointermove' && ev.pointerType !== 'touch';
+    if (ev.type === 'pointermove' && !hoverMove && !this._dragging) return;
     if (ev.type === 'pointerdown') {
       this._dragging = true;
       try {
@@ -672,6 +685,10 @@ class RealElectricityPriceCard extends LitElement {
       justify-content: space-between;
       gap: 16px;
       margin-bottom: 12px;
+    }
+
+    .price-head-no-title {
+      justify-content: flex-end;
     }
 
     .price-title {
@@ -943,7 +960,7 @@ class RealElectricityPriceCardEditor extends LitElement {
     const config = normalizeConfig(this._config);
     return html`
       <div class="editor">
-        ${this._textField('Name', 'name', config.name || DEFAULT_NAME)}
+        ${this._textField('Name (optional)', 'name', config.name || '')}
         ${this._textField('Chart Data Entity', 'entity', config.entity || DEFAULT_ENTITY)}
         ${this._textField('Current Price Entity', 'current_price_entity', config.current_price_entity || DEFAULT_CURRENT_PRICE_ENTITY)}
         <label>
@@ -951,6 +968,13 @@ class RealElectricityPriceCardEditor extends LitElement {
           <select .value=${chartType(config)} @change=${(ev: Event) => this._setValue('chart_type', (ev.target as HTMLSelectElement).value)}>
             <option value="bar">Bars</option>
             <option value="line">Line</option>
+          </select>
+        </label>
+        <label>
+          <span>Selector Mode</span>
+          <select .value=${selectorMode(config)} @change=${(ev: Event) => this._setValue('selector_mode', (ev.target as HTMLSelectElement).value)}>
+            <option value="hover">Hover</option>
+            <option value="click">Click / tap</option>
           </select>
         </label>
         <div class="grid">

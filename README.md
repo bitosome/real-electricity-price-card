@@ -7,7 +7,8 @@ The card renders `sensor.real_electricity_price_chart_data` directly, using the 
 ## Features
 
 - Bar or line chart rendering.
-- Interactive selector for hour-by-hour price inspection.
+- Interactive selector for hour-by-hour price inspection, with hover or click/tap modes.
+- Optional title. Leave `name` empty or omit it to hide the title.
 - Uses the integration-provided `fillColor` values by default.
 - Optional color overrides for past, current, future, and cheap-hour colors.
 - Optional exact `color_overrides` map for replacing any color emitted by the sensor.
@@ -56,6 +57,7 @@ name: Electricity Price
 entity: sensor.real_electricity_price_chart_data
 current_price_entity: sensor.real_electricity_price_current_price
 chart_type: bar
+selector_mode: hover
 height: 190
 horizontal_lines: 5
 price_decimals: 4
@@ -78,8 +80,9 @@ color_overrides:
 | --- | --- | --- | --- |
 | `entity` | string | `sensor.real_electricity_price_chart_data` | Sensor whose `attributes.chart_data` array is rendered. |
 | `current_price_entity` | string | `sensor.real_electricity_price_current_price` | Optional sensor used for the current price in the header. |
-| `name` | string | `Electricity Price` | Card title. |
+| `name` | string | empty | Optional card title. If omitted or blank, no title is rendered. |
 | `chart_type` | `bar` or `line` | `bar` | Chart rendering mode. |
+| `selector_mode` | `hover` or `click` | `hover` | `hover` updates the selector while moving over the graph on desktop and still supports touch drag. `click` updates on click/tap and drag. |
 | `height` | number | `190` | SVG graph height in pixels. |
 | `horizontal_lines` | number | `5` | Number of horizontal grid lines and right-side axis labels. |
 | `price_decimals` | number | `4` | Decimal places for selected/current price values. |
