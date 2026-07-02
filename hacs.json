@@ -1,0 +1,8 @@
+{
+  "name": "Real Electricity Price Card",
+  "render_readme": true,
+  "filename": "real-electricity-price-card.js",
+  "content_in_root": false,
+  "persistent_directory": false,
+  "zip_release": false
+}
