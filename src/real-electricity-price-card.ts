@@ -1,9 +1,11 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 
-const CARD_VERSION = '0.1.1';
+const CARD_VERSION = '0.1.2';
 const DEFAULT_ENTITY = 'sensor.real_electricity_price_chart_data';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
 const DEFAULT_UNIT = '€/kWh';
+const HOUR_MS = 60 * 60 * 1000;
+const CHART_HOURS = 48;
 
 type SelectorMode = 'hover' | 'click';
 
@@ -98,6 +100,11 @@ interface ChartBox {
 interface PriceRange {
   min: number;
   max: number;
+}
+
+interface ChartDomain {
+  start: number;
+  end: number;
 }
 
 function fireEvent(node: HTMLElement, type: string, detail: unknown): void {
@@ -214,14 +221,18 @@ function formatTimeLabel(hass: HomeAssistant | undefined, timestamp: number): st
   }).format(new Date(timestamp));
 }
 
-function inferInterval(points: PricePoint[]): number {
-  const diffs = points
-    .slice(1)
-    .map((point, index) => point.timestamp - points[index].timestamp)
-    .filter((diff) => Number.isFinite(diff) && diff > 0)
-    .sort((a, b) => a - b);
-  if (!diffs.length) return 3600000;
-  return diffs[Math.floor(diffs.length / 2)] || 3600000;
+function fixedChartDomain(): ChartDomain {
+  const startDate = new Date();
+  startDate.setHours(0, 0, 0, 0);
+  const start = startDate.getTime();
+  return {
+    start,
+    end: start + (CHART_HOURS * HOUR_MS),
+  };
+}
+
+function pointsInDomain(points: PricePoint[], domain: ChartDomain): PricePoint[] {
+  return points.filter((point) => point.timestamp >= domain.start && point.timestamp <= domain.end);
 }
 
 function valueRange(points: PricePoint[], config: RealElectricityPriceCardConfig): PriceRange {
@@ -239,23 +250,17 @@ function valueRange(points: PricePoint[], config: RealElectricityPriceCardConfig
   return { min, max };
 }
 
-function xForTimestamp(timestamp: number, points: PricePoint[], box: ChartBox, type: 'bar' | 'line'): number {
+function xForTimestamp(timestamp: number, domain: ChartDomain, box: ChartBox): number {
   const plotWidth = box.width - box.left - box.right;
-  if (points.length <= 1) return box.left + (plotWidth / 2);
-  const interval = inferInterval(points);
-  const first = points[0].timestamp;
-  const last = points[points.length - 1].timestamp;
-  const start = type === 'bar' ? first - (interval / 2) : first;
-  const end = type === 'bar' ? last + (interval / 2) : last;
-  const span = Math.max(1, end - start);
-  return box.left + ((timestamp - start) / span) * plotWidth;
+  const span = Math.max(1, domain.end - domain.start);
+  return box.left + ((timestamp - domain.start) / span) * plotWidth;
 }
 
-function buildChartPoints(points: PricePoint[], box: ChartBox, range: PriceRange, type: 'bar' | 'line'): ChartPoint[] {
+function buildChartPoints(points: PricePoint[], box: ChartBox, range: PriceRange, domain: ChartDomain): ChartPoint[] {
   const plotHeight = box.height - box.top - box.bottom;
   return points.map((point) => ({
     ...point,
-    x: xForTimestamp(point.timestamp, points, box, type),
+    x: xForTimestamp(point.timestamp, domain, box),
     y: box.top + ((range.max - point.value) / (range.max - range.min)) * plotHeight,
   }));
 }
@@ -274,14 +279,9 @@ function nearestPointIndex(points: ChartPoint[], timestamp = Date.now()): number
   return bestIndex;
 }
 
-function tickIndexes(points: ChartPoint[]): number[] {
-  if (!points.length) return [];
-  return Array.from(new Set([
-    0,
-    Math.floor((points.length - 1) / 3),
-    Math.floor(((points.length - 1) * 2) / 3),
-    points.length - 1,
-  ])).filter((index) => index >= 0 && index < points.length);
+function domainTicks(domain: ChartDomain): number[] {
+  return [0, CHART_HOURS / 3, (CHART_HOURS * 2) / 3, CHART_HOURS]
+    .map((hours) => domain.start + (hours * HOUR_MS));
 }
 
 function smoothPath(points: ChartPoint[]): string {
@@ -413,8 +413,11 @@ class RealElectricityPriceCard extends LitElement {
     const selector = selectorMode(config);
     const title = typeof config.name === 'string' ? config.name.trim() : '';
     const box: ChartBox = { width: 360, height: chartHeight(config), left: 8, right: 34, top: 16, bottom: 27 };
-    const range = valueRange(rawPoints, config);
-    const points = buildChartPoints(rawPoints, box, range, type);
+    const domain = fixedChartDomain();
+    const visibleRawPoints = pointsInDomain(rawPoints, domain);
+    const chartRawPoints = visibleRawPoints.length ? visibleRawPoints : rawPoints;
+    const range = valueRange(chartRawPoints, config);
+    const points = buildChartPoints(chartRawPoints, box, range, domain);
     const selectedIndex = Math.max(0, Math.min(points.length - 1, this._selectedIndex ?? nearestPointIndex(points)));
     const selected = points[selectedIndex];
     const minPoint = points.reduce((best, point) => point.value < best.value ? point : best, points[0]);
@@ -424,26 +427,33 @@ class RealElectricityPriceCard extends LitElement {
     return html`
       <ha-card class="price-card" style=${`--rep-card-bg:${config.card_background};--rep-chart-bg:${config.chart_background};--rep-grid:${config.grid_color};--rep-marker:${config.marker_color};`}>
         <div class="price-content">
-          <div class=${`price-head${title ? '' : ' price-head-no-title'}`}>
-            ${title ? html`
+          ${title ? html`
+            <div class="price-head">
               <button class="price-title" @click=${() => this._openMoreInfo(entityId)}>
                 <span>${title}</span>
               </button>
-            ` : nothing}
-            <div class="price-selected">
-              <span>${formatDateTime(this.hass, selected.timestamp)}</span>
-              <strong>${formatPrice(selected.value, config)}</strong>
             </div>
-          </div>
+          ` : nothing}
 
-          ${config.show_stats === false ? nothing : this._renderStats(config, rawPoints, minPoint, maxPoint, current)}
+          ${config.show_stats === false ? nothing : this._renderStats(config, chartRawPoints, minPoint, maxPoint, current)}
 
           <div class="price-chart-frame">
-            ${this._renderChart(config, box, points, selected, minPoint, maxPoint, range, type, selector)}
-            <span
-              class="price-selected-dot"
-              style=${`left:${((selected.x / box.width) * 100).toFixed(2)}%;top:${((selected.y / box.height) * 100).toFixed(2)}%;`}
-            ></span>
+            <div class="price-chart-head">
+              <div class="price-chart-title">
+                <span>Price</span>
+              </div>
+              <div class="price-selected">
+                <span>${formatDateTime(this.hass, selected.timestamp)}</span>
+                <strong>${formatPrice(selected.value, config)}</strong>
+              </div>
+            </div>
+            <div class="price-chart-body">
+              ${this._renderChart(config, box, points, selected, minPoint, maxPoint, range, type, selector, domain)}
+              <span
+                class="price-selected-dot"
+                style=${`left:${((selected.x / box.width) * 100).toFixed(2)}%;top:${((selected.y / box.height) * 100).toFixed(2)}%;`}
+              ></span>
+            </div>
           </div>
         </div>
       </ha-card>
@@ -497,17 +507,18 @@ class RealElectricityPriceCard extends LitElement {
     range: PriceRange,
     type: 'bar' | 'line',
     selector: SelectorMode,
+    domain: ChartDomain,
   ): TemplateResult {
     const baseline = box.height - box.bottom;
     const zeroY = Math.max(box.top, Math.min(baseline, box.top + ((range.max - 0) / (range.max - range.min)) * (box.height - box.top - box.bottom)));
-    const interval = inferInterval(points);
     const plotWidth = box.width - box.left - box.right;
-    const barWidth = Math.max(2, Math.min(14, (plotWidth / Math.max(1, points.length)) * 0.82));
-    const ticks = tickIndexes(points);
-    const currentX = xForTimestamp(Date.now(), points, box, type);
+    const barWidth = Math.max(2, Math.min(14, (plotWidth / CHART_HOURS) * 0.82));
+    const ticks = domainTicks(domain);
+    const currentX = xForTimestamp(Date.now(), domain, box);
     const showCurrent = config.show_current_marker !== false && currentX >= box.left && currentX <= box.width - box.right;
     const gradientId = 'rep-line-fill';
     const lineGradientId = 'rep-line-color';
+    const gradientSpan = Math.max(1, box.width - box.left - box.right);
 
     return html`
       <svg
@@ -528,12 +539,12 @@ class RealElectricityPriceCard extends LitElement {
             <stop offset="100%" stop-color="rgba(56, 199, 243, 0.04)"></stop>
           </linearGradient>
           <linearGradient id=${lineGradientId} x1=${box.left} x2=${box.width - box.right} y1="0" y2="0" gradientUnits="userSpaceOnUse">
-            ${points.map((point, index) => svg`
-              <stop offset=${`${(index / Math.max(1, points.length - 1)) * 100}%`} stop-color=${resolvePointColor(point, config)}></stop>
+            ${points.map((point) => svg`
+              <stop offset=${`${Math.max(0, Math.min(100, ((point.x - box.left) / gradientSpan) * 100))}%`} stop-color=${resolvePointColor(point, config)}></stop>
             `)}
           </linearGradient>
         </defs>
-        ${this._renderGrid(config, box, points, ticks, range)}
+        ${this._renderGrid(config, box, range, ticks, domain)}
         ${showCurrent ? svg`<line class="price-current-line" x1=${currentX} x2=${currentX} y1=${box.top} y2=${baseline}></line>` : nothing}
         ${type === 'line'
           ? this._renderLineChart(points, baseline, gradientId, lineGradientId, config)
@@ -544,7 +555,7 @@ class RealElectricityPriceCard extends LitElement {
         `}
         <line class="price-selected-line" x1=${selected.x} x2=${selected.x} y1=${box.top} y2=${baseline}></line>
         <title>${formatDateTime(this.hass, selected.timestamp)} ${formatPrice(selected.value, config)}</title>
-        <desc>${points.length} hourly electricity price points. Inferred interval ${Math.round(interval / 60000)} minutes.</desc>
+        <desc>${points.length} available hourly electricity price points in a fixed ${CHART_HOURS}-hour chart window.</desc>
       </svg>
     `;
   }
@@ -552,9 +563,9 @@ class RealElectricityPriceCard extends LitElement {
   private _renderGrid(
     config: RealElectricityPriceCardConfig,
     box: ChartBox,
-    points: ChartPoint[],
-    ticks: number[],
     range: PriceRange,
+    ticks: number[],
+    domain: ChartDomain,
   ): TemplateResult[] {
     const baseline = box.height - box.bottom;
     const lines = horizontalLineCount(config);
@@ -568,16 +579,16 @@ class RealElectricityPriceCard extends LitElement {
           <text class="price-axis-label" x=${box.width - 2} y=${y}>${formatAxisPrice(value, config)}</text>
         `;
       }),
-      ...ticks.map((index) => {
-        const point = points[index];
+      ...ticks.map((timestamp, index) => {
+        const x = xForTimestamp(timestamp, domain, box);
         const edgeClass = index === 0
           ? ' price-time-label-start'
-          : index === points.length - 1
+          : index === ticks.length - 1
             ? ' price-time-label-end'
             : '';
         return svg`
-          <line class="price-time-line" x1=${point.x} x2=${point.x} y1=${box.top} y2=${baseline}></line>
-          <text class=${`price-time-label${edgeClass}`} x=${point.x} y=${box.height - 6}>${formatTimeLabel(this.hass, point.timestamp)}</text>
+          <line class="price-time-line" x1=${x} x2=${x} y1=${box.top} y2=${baseline}></line>
+          <text class=${`price-time-label${edgeClass}`} x=${x} y=${box.height - 6}>${formatTimeLabel(this.hass, timestamp)}</text>
         `;
       }),
     ];
@@ -687,10 +698,6 @@ class RealElectricityPriceCard extends LitElement {
       margin-bottom: 12px;
     }
 
-    .price-head-no-title {
-      justify-content: flex-end;
-    }
-
     .price-title {
       max-width: min(70%, 460px);
       padding: 0;
@@ -716,26 +723,36 @@ class RealElectricityPriceCard extends LitElement {
     }
 
     .price-selected {
-      display: grid;
-      justify-items: end;
-      gap: 2px;
-      min-width: max-content;
-      text-align: right;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: baseline;
+      justify-content: end;
+      gap: 5px;
+      max-width: min(58%, 172px);
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--secondary-text-color);
+      font-size: 9px;
+      line-height: 1;
+      font-weight: 750;
     }
 
     .price-selected span {
-      color: var(--secondary-text-color);
-      font-size: 12px;
-      font-weight: 750;
-      line-height: 1.1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .price-selected strong {
       color: var(--primary-text-color);
-      font-size: 28px;
+      font-size: 14px;
       line-height: 1;
       font-weight: 850;
       letter-spacing: 0;
+      white-space: nowrap;
     }
 
     .price-stats {
@@ -780,9 +797,43 @@ class RealElectricityPriceCard extends LitElement {
       position: relative;
       width: 100%;
       min-width: 0;
+      display: grid;
+      gap: 5px;
+      padding: 7px 8px 6px;
+      box-sizing: border-box;
       border-radius: 10px;
       background: var(--rep-chart-bg);
       overflow: hidden;
+    }
+
+    .price-chart-head {
+      min-width: 0;
+      min-height: 18px;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .price-chart-title {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--primary-text-color);
+      font-size: 12px;
+      line-height: 1.15;
+      font-weight: 850;
+    }
+
+    .price-chart-body {
+      position: relative;
+      width: 100%;
+      min-width: 0;
+      overflow: visible;
     }
 
     .price-chart {
@@ -929,10 +980,6 @@ class RealElectricityPriceCard extends LitElement {
       .price-title {
         max-width: 64%;
         font-size: 18px;
-      }
-
-      .price-selected strong {
-        font-size: 22px;
       }
 
       .price-stats {
