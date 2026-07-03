@@ -1,6 +1,6 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 
-const CARD_VERSION = '0.1.4';
+const CARD_VERSION = '0.1.5';
 const DEFAULT_ENTITY = 'sensor.real_electricity_price_chart_data';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
 const DEFAULT_UNIT = '€/kWh';
@@ -385,8 +385,6 @@ class RealElectricityPriceCard extends LitElement {
 
   private _selectedIndex?: number;
 
-  private _selectedTimestamp?: number;
-
   private _dragging = false;
 
   private _clockTimer?: number;
@@ -395,7 +393,6 @@ class RealElectricityPriceCard extends LitElement {
     hass: { attribute: false },
     _config: { state: true },
     _selectedIndex: { state: true },
-    _selectedTimestamp: { state: true },
   };
 
   public static async getConfigElement(): Promise<HTMLElement> {
@@ -460,8 +457,7 @@ class RealElectricityPriceCard extends LitElement {
     const now = Date.now();
     const hasManualSelection = this._selectedIndex !== undefined;
     const selectedIndex = Math.max(0, Math.min(points.length - 1, hasManualSelection ? this._selectedIndex ?? 0 : pointIndexAtTimestamp(points, now)));
-    const selectedTimestamp = hasManualSelection ? this._selectedTimestamp ?? points[selectedIndex].timestamp : now;
-    const selected = currentSelectionPoint(points, selectedTimestamp, domain, box);
+    const selected = hasManualSelection ? points[selectedIndex] : currentSelectionPoint(points, now, domain, box);
     const minPoint = points.reduce((best, point) => point.value < best.value ? point : best, points[0]);
     const maxPoint = points.reduce((best, point) => point.value > best.value ? point : best, points[0]);
     const current = currentPriceValue(this.hass, config);
@@ -692,7 +688,6 @@ class RealElectricityPriceCard extends LitElement {
     const x = ((ev.clientX - rect.left) / Math.max(1, rect.width)) * box.width;
     const timestamp = timestampForX(x, domain, box);
     this._selectedIndex = pointIndexAtTimestamp(points, timestamp);
-    this._selectedTimestamp = timestamp;
   }
 
   private _stopPointer = (ev: PointerEvent): void => {

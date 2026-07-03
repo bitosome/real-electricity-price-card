@@ -8,6 +8,7 @@ The card renders `sensor.real_electricity_price_chart_data` directly, using the 
 
 - Bar or line chart rendering.
 - Interactive selector for hour-by-hour price inspection, with hover or click/tap modes.
+- Live current-time marker uses the exact current minute while selection snaps by hourly price interval.
 - Optional title. Leave `name` empty or omit it to hide the title.
 - Fixed 48-hour chart window from the current local day start, so missing next-day prices appear as empty future space.
 - Uses the integration-provided `fillColor` values by default.
@@ -89,7 +90,7 @@ color_overrides:
 | `price_decimals` | number | `4` | Decimal places for selected/current price values. |
 | `axis_decimals` | number | `2` | Decimal places for right-side axis labels. |
 | `unit` | string | `€/kWh` | Price unit label. |
-| `show_current_marker` | boolean | `true` | Shows a vertical marker for the current hour when visible in the data. |
+| `show_current_marker` | boolean | `true` | Shows a vertical marker for the exact current time when visible in the 48-hour window. |
 | `show_extremes` | boolean | `true` | Shows H/L labels on the highest and lowest visible prices. |
 | `show_stats` | boolean | `true` | Shows min, average, and max summary chips below the header. |
 | `use_sensor_colors` | boolean | `true` | Uses each data point's `fillColor` unless overridden. |
