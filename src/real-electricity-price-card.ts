@@ -1,6 +1,6 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 
-const CARD_VERSION = '0.1.6';
+const CARD_VERSION = '0.1.7';
 const DEFAULT_ENTITY = 'sensor.real_electricity_price_chart_data';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
 const DEFAULT_UNIT = '€/kWh';
@@ -300,6 +300,14 @@ function currentSelectionPoint(points: ChartPoint[], timestamp: number, domain: 
   };
 }
 
+function columnCenterPoint(point: ChartPoint, barSlotWidth: number): ChartPoint {
+  return {
+    ...point,
+    x: point.x + (barSlotWidth / 2),
+    sourceTimestamp: point.timestamp,
+  };
+}
+
 function domainTicks(domain: ChartDomain): number[] {
   return [0, CHART_HOURS / 3, (CHART_HOURS * 2) / 3, CHART_HOURS]
     .map((hours) => domain.start + (hours * HOUR_MS));
@@ -454,10 +462,13 @@ class RealElectricityPriceCard extends LitElement {
     const chartRawPoints = visibleRawPoints.length ? visibleRawPoints : rawPoints;
     const range = valueRange(chartRawPoints, config);
     const points = buildChartPoints(chartRawPoints, box, range, domain);
+    const barSlotWidth = (box.width - box.left - box.right) / CHART_HOURS;
     const now = Date.now();
     const hasManualSelection = this._selectedIndex !== undefined;
     const selectedIndex = Math.max(0, Math.min(points.length - 1, hasManualSelection ? this._selectedIndex ?? 0 : pointIndexAtTimestamp(points, now)));
-    const selected = hasManualSelection ? points[selectedIndex] : currentSelectionPoint(points, now, domain, box);
+    const selected = hasManualSelection
+      ? type === 'bar' ? columnCenterPoint(points[selectedIndex], barSlotWidth) : points[selectedIndex]
+      : currentSelectionPoint(points, now, domain, box);
     const minPoint = points.reduce((best, point) => point.value < best.value ? point : best, points[0]);
     const maxPoint = points.reduce((best, point) => point.value > best.value ? point : best, points[0]);
     const current = currentPriceValue(this.hass, config);
@@ -477,9 +488,6 @@ class RealElectricityPriceCard extends LitElement {
 
           <div class="price-chart-frame">
             <div class="price-chart-head">
-              <div class="price-chart-title">
-                <span>Price</span>
-              </div>
               <div class="price-selected">
                 <span>${formatDateTime(this.hass, selected.timestamp)}</span>
                 <strong>${formatPrice(selected.value, config)}</strong>
@@ -853,22 +861,8 @@ class RealElectricityPriceCard extends LitElement {
       min-height: 18px;
       display: flex;
       align-items: start;
-      justify-content: space-between;
+      justify-content: flex-end;
       gap: 8px;
-    }
-
-    .price-chart-title {
-      min-width: 0;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: var(--primary-text-color);
-      font-size: 12px;
-      line-height: 1.15;
-      font-weight: 850;
     }
 
     .price-chart-body {
