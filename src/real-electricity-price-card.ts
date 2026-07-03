@@ -1,6 +1,6 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 
-const CARD_VERSION = '0.1.3';
+const CARD_VERSION = '0.1.4';
 const DEFAULT_ENTITY = 'sensor.real_electricity_price_chart_data';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
 const DEFAULT_UNIT = '€/kWh';
@@ -86,6 +86,7 @@ interface PricePoint {
 interface ChartPoint extends PricePoint {
   x: number;
   y: number;
+  sourceTimestamp?: number;
 }
 
 interface ChartBox {
@@ -237,7 +238,7 @@ function fixedChartDomain(): ChartDomain {
 }
 
 function pointsInDomain(points: PricePoint[], domain: ChartDomain): PricePoint[] {
-  return points.filter((point) => point.timestamp >= domain.start && point.timestamp <= domain.end);
+  return points.filter((point) => point.timestamp >= domain.start && point.timestamp < domain.end);
 }
 
 function valueRange(points: PricePoint[], config: RealElectricityPriceCardConfig): PriceRange {
@@ -261,6 +262,13 @@ function xForTimestamp(timestamp: number, domain: ChartDomain, box: ChartBox): n
   return box.left + ((timestamp - domain.start) / span) * plotWidth;
 }
 
+function timestampForX(x: number, domain: ChartDomain, box: ChartBox): number {
+  const plotWidth = box.width - box.left - box.right;
+  const span = Math.max(1, domain.end - domain.start);
+  const clampedX = Math.max(box.left, Math.min(box.width - box.right, x));
+  return domain.start + ((clampedX - box.left) / Math.max(1, plotWidth)) * span;
+}
+
 function buildChartPoints(points: PricePoint[], box: ChartBox, range: PriceRange, domain: ChartDomain): ChartPoint[] {
   const plotHeight = box.height - box.top - box.bottom;
   return points.map((point) => ({
@@ -270,18 +278,26 @@ function buildChartPoints(points: PricePoint[], box: ChartBox, range: PriceRange
   }));
 }
 
-function nearestPointIndex(points: ChartPoint[], timestamp = Date.now()): number {
+function pointIndexAtTimestamp(points: ChartPoint[], timestamp: number): number {
   if (!points.length) return 0;
-  let bestIndex = 0;
-  let bestDistance = Math.abs(points[0].timestamp - timestamp);
-  points.forEach((point, index) => {
-    const distance = Math.abs(point.timestamp - timestamp);
-    if (distance < bestDistance) {
-      bestIndex = index;
-      bestDistance = distance;
-    }
-  });
-  return bestIndex;
+  if (timestamp <= points[0].timestamp) return 0;
+  let index = 0;
+  for (let pointIndex = 1; pointIndex < points.length; pointIndex += 1) {
+    if (points[pointIndex].timestamp > timestamp) break;
+    index = pointIndex;
+  }
+  return index;
+}
+
+function currentSelectionPoint(points: ChartPoint[], timestamp: number, domain: ChartDomain, box: ChartBox): ChartPoint {
+  const source = points[pointIndexAtTimestamp(points, timestamp)];
+  if (timestamp < domain.start || timestamp > domain.end) return source;
+  return {
+    ...source,
+    timestamp,
+    x: xForTimestamp(timestamp, domain, box),
+    sourceTimestamp: source.timestamp,
+  };
 }
 
 function domainTicks(domain: ChartDomain): number[] {
@@ -369,12 +385,17 @@ class RealElectricityPriceCard extends LitElement {
 
   private _selectedIndex?: number;
 
+  private _selectedTimestamp?: number;
+
   private _dragging = false;
+
+  private _clockTimer?: number;
 
   static properties = {
     hass: { attribute: false },
     _config: { state: true },
     _selectedIndex: { state: true },
+    _selectedTimestamp: { state: true },
   };
 
   public static async getConfigElement(): Promise<HTMLElement> {
@@ -393,6 +414,19 @@ class RealElectricityPriceCard extends LitElement {
 
   public setConfig(config: RealElectricityPriceCardConfig): void {
     this._config = normalizeConfig(config || {});
+  }
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._clockTimer = window.setInterval(() => this.requestUpdate(), 30_000);
+  }
+
+  disconnectedCallback(): void {
+    if (this._clockTimer !== undefined) {
+      window.clearInterval(this._clockTimer);
+      this._clockTimer = undefined;
+    }
+    super.disconnectedCallback();
   }
 
   public getCardSize(): number {
@@ -423,8 +457,11 @@ class RealElectricityPriceCard extends LitElement {
     const chartRawPoints = visibleRawPoints.length ? visibleRawPoints : rawPoints;
     const range = valueRange(chartRawPoints, config);
     const points = buildChartPoints(chartRawPoints, box, range, domain);
-    const selectedIndex = Math.max(0, Math.min(points.length - 1, this._selectedIndex ?? nearestPointIndex(points)));
-    const selected = points[selectedIndex];
+    const now = Date.now();
+    const hasManualSelection = this._selectedIndex !== undefined;
+    const selectedIndex = Math.max(0, Math.min(points.length - 1, hasManualSelection ? this._selectedIndex ?? 0 : pointIndexAtTimestamp(points, now)));
+    const selectedTimestamp = hasManualSelection ? this._selectedTimestamp ?? points[selectedIndex].timestamp : now;
+    const selected = currentSelectionPoint(points, selectedTimestamp, domain, box);
     const minPoint = points.reduce((best, point) => point.value < best.value ? point : best, points[0]);
     const maxPoint = points.reduce((best, point) => point.value > best.value ? point : best, points[0]);
     const current = currentPriceValue(this.hass, config);
@@ -517,7 +554,8 @@ class RealElectricityPriceCard extends LitElement {
     const baseline = box.height - box.bottom;
     const zeroY = Math.max(box.top, Math.min(baseline, box.top + ((range.max - 0) / (range.max - range.min)) * (box.height - box.top - box.bottom)));
     const plotWidth = box.width - box.left - box.right;
-    const barWidth = Math.max(2, Math.min(14, (plotWidth / CHART_HOURS) * 0.82));
+    const barSlotWidth = plotWidth / CHART_HOURS;
+    const barWidth = Math.max(2, Math.min(14, barSlotWidth * 0.9));
     const ticks = domainTicks(domain);
     const currentX = xForTimestamp(Date.now(), domain, box);
     const showCurrent = config.show_current_marker !== false && currentX >= box.left && currentX <= box.width - box.right;
@@ -532,8 +570,8 @@ class RealElectricityPriceCard extends LitElement {
         preserveAspectRatio="none"
         role="img"
         aria-label="Electricity price chart"
-        @pointerdown=${(ev: PointerEvent) => this._selectPoint(ev, points, box, selector)}
-        @pointermove=${(ev: PointerEvent) => this._selectPoint(ev, points, box, selector)}
+        @pointerdown=${(ev: PointerEvent) => this._selectPoint(ev, points, box, selector, domain)}
+        @pointermove=${(ev: PointerEvent) => this._selectPoint(ev, points, box, selector, domain)}
         @pointerup=${this._stopPointer}
         @pointercancel=${this._stopPointer}
         @pointerleave=${this._stopPointer}
@@ -550,10 +588,10 @@ class RealElectricityPriceCard extends LitElement {
           </linearGradient>
         </defs>
         ${this._renderGrid(config, box, range, ticks, domain)}
-        ${showCurrent ? svg`<line class="price-current-line" x1=${currentX} x2=${currentX} y1=${box.top} y2=${baseline}></line>` : nothing}
         ${type === 'line'
           ? this._renderLineChart(points, baseline, gradientId, lineGradientId, config)
-          : this._renderBarChart(points, zeroY, barWidth, selected, config)}
+          : this._renderBarChart(points, zeroY, barWidth, barSlotWidth, selected, config)}
+        ${showCurrent ? svg`<line class="price-current-line" x1=${currentX} x2=${currentX} y1=${box.top} y2=${baseline}></line>` : nothing}
         ${config.show_extremes === false ? nothing : svg`
           <text class="price-extreme" x=${minPoint.x} y=${Math.max(11, minPoint.y - 9)}>L</text>
           <text class="price-extreme" x=${maxPoint.x} y=${Math.max(11, maxPoint.y - 9)}>H</text>
@@ -599,15 +637,24 @@ class RealElectricityPriceCard extends LitElement {
     ];
   }
 
-  private _renderBarChart(points: ChartPoint[], zeroY: number, barWidth: number, selected: ChartPoint, config: RealElectricityPriceCardConfig): TemplateResult[] {
+  private _renderBarChart(
+    points: ChartPoint[],
+    zeroY: number,
+    barWidth: number,
+    barSlotWidth: number,
+    selected: ChartPoint,
+    config: RealElectricityPriceCardConfig,
+  ): TemplateResult[] {
+    const selectedTimestamp = selected.sourceTimestamp ?? selected.timestamp;
+    const barInset = Math.max(0, (barSlotWidth - barWidth) / 2);
     return points.map((point) => {
       const top = Math.min(point.y, zeroY);
       const height = Math.max(1, Math.abs(zeroY - point.y));
-      const selectedClass = point.timestamp === selected.timestamp ? ' price-bar-selected' : '';
+      const selectedClass = point.timestamp === selectedTimestamp ? ' price-bar-selected' : '';
       return svg`
         <rect
           class=${`price-bar${selectedClass}`}
-          x=${point.x - (barWidth / 2)}
+          x=${point.x + barInset}
           y=${top}
           width=${barWidth}
           height=${height}
@@ -629,7 +676,7 @@ class RealElectricityPriceCard extends LitElement {
     `;
   }
 
-  private _selectPoint(ev: PointerEvent, points: ChartPoint[], box: ChartBox, selector: SelectorMode): void {
+  private _selectPoint(ev: PointerEvent, points: ChartPoint[], box: ChartBox, selector: SelectorMode, domain: ChartDomain): void {
     const hoverMove = selector === 'hover' && ev.type === 'pointermove' && ev.pointerType !== 'touch';
     if (ev.type === 'pointermove' && !hoverMove && !this._dragging) return;
     if (ev.type === 'pointerdown') {
@@ -643,16 +690,9 @@ class RealElectricityPriceCard extends LitElement {
     ev.preventDefault();
     const rect = (ev.currentTarget as SVGElement).getBoundingClientRect();
     const x = ((ev.clientX - rect.left) / Math.max(1, rect.width)) * box.width;
-    let bestIndex = 0;
-    let bestDistance = Math.abs(points[0].x - x);
-    points.forEach((point, index) => {
-      const distance = Math.abs(point.x - x);
-      if (distance < bestDistance) {
-        bestIndex = index;
-        bestDistance = distance;
-      }
-    });
-    this._selectedIndex = bestIndex;
+    const timestamp = timestampForX(x, domain, box);
+    this._selectedIndex = pointIndexAtTimestamp(points, timestamp);
+    this._selectedTimestamp = timestamp;
   }
 
   private _stopPointer = (ev: PointerEvent): void => {
