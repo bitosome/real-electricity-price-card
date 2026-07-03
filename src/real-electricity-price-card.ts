@@ -1,6 +1,6 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 
-const CARD_VERSION = '0.1.2';
+const CARD_VERSION = '0.1.3';
 const DEFAULT_ENTITY = 'sensor.real_electricity_price_chart_data';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
 const DEFAULT_UNIT = '€/kWh';
@@ -205,20 +205,25 @@ function timeFormatOptions(hass?: HomeAssistant): Intl.DateTimeFormatOptions {
   return options;
 }
 
-function formatDateTime(hass: HomeAssistant | undefined, timestamp: number): string {
+function formatDateLabel(hass: HomeAssistant | undefined, timestamp: number): string {
   return new Intl.DateTimeFormat(hass?.locale?.language, {
     day: 'numeric',
     month: 'long',
+  }).format(new Date(timestamp));
+}
+
+function formatTimeOnly(hass: HomeAssistant | undefined, timestamp: number): string {
+  return new Intl.DateTimeFormat(hass?.locale?.language, {
     ...timeFormatOptions(hass),
   }).format(new Date(timestamp));
 }
 
+function formatDateTime(hass: HomeAssistant | undefined, timestamp: number): string {
+  return `${formatDateLabel(hass, timestamp)} ${formatTimeOnly(hass, timestamp)}`;
+}
+
 function formatTimeLabel(hass: HomeAssistant | undefined, timestamp: number): string {
-  return new Intl.DateTimeFormat(hass?.locale?.language, {
-    day: 'numeric',
-    month: 'long',
-    ...timeFormatOptions(hass),
-  }).format(new Date(timestamp));
+  return formatDateTime(hass, timestamp);
 }
 
 function fixedChartDomain(): ChartDomain {
