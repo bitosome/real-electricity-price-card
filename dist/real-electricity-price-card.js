@@ -75,7 +75,7 @@ const v=globalThis,w=t=>t,A=v.trustedTypes,E=A?A.createPolicy("lit-html",{create
           <strong>${kt(r.value,t)}</strong>
         </div>
       </div>
-    `}_renderChart(t,e,i,r,s,o,n,a,c,l){const h=e.height-e.bottom,d=Math.max(e.top,Math.min(h,e.top+(n.max-0)/(n.max-n.min)*(e.height-e.top-e.bottom))),p=(e.width-e.left-e.right)/mt,u=Math.max(2,Math.min(14,.9*p)),m=function(t){return[0,mt/3,2*mt/3,mt].map(e=>t.start+e*ut)}(l),_=Mt(Date.now(),l,e),f=!1!==t.show_current_marker&&_>=e.left&&_<=e.width-e.right,g="rep-line-fill",$="rep-line-color",x=Math.max(1,e.width-e.left-e.right);return B`
+    `}_renderChart(t,e,i,r,s,o,n,a,c,l){const h=e.height-e.bottom,d=Math.max(e.top,Math.min(h,e.top+(n.max-0)/(n.max-n.min)*(e.height-e.top-e.bottom))),p=(e.width-e.left-e.right)/mt,u=Math.max(2,Math.min(14,.9*p)),m=function(t){return[0,mt/3,2*mt/3,mt].map(e=>t.start+e*ut)}(l),_=Mt(Date.now(),l,e),f=!1!==t.show_current_marker&&_>=e.left&&_<=e.width-e.right,g="bar"===a?s.x+p/2:s.x,$="bar"===a?o.x+p/2:o.x,x="rep-line-fill",y="rep-line-color",b=Math.max(1,e.width-e.left-e.right);return B`
       <svg
         class="price-chart"
         viewBox=${`0 0 ${e.width} ${e.height}`}
@@ -89,22 +89,22 @@ const v=globalThis,w=t=>t,A=v.trustedTypes,E=A?A.createPolicy("lit-html",{create
         @pointerleave=${this._stopPointer}
       >
         <defs>
-          <linearGradient id=${g} x1="0" x2="0" y1="0" y2="1">
+          <linearGradient id=${x} x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stop-color=${t.fill_color||"rgba(56, 199, 243, 0.20)"}></stop>
             <stop offset="100%" stop-color="rgba(56, 199, 243, 0.04)"></stop>
           </linearGradient>
-          <linearGradient id=${$} x1=${e.left} x2=${e.width-e.right} y1="0" y2="0" gradientUnits="userSpaceOnUse">
+          <linearGradient id=${y} x1=${e.left} x2=${e.width-e.right} y1="0" y2="0" gradientUnits="userSpaceOnUse">
             ${i.map(i=>V`
-              <stop offset=${`${Math.max(0,Math.min(100,(i.x-e.left)/x*100))}%`} stop-color=${Nt(i,t)}></stop>
+              <stop offset=${`${Math.max(0,Math.min(100,(i.x-e.left)/b*100))}%`} stop-color=${Nt(i,t)}></stop>
             `)}
           </linearGradient>
         </defs>
         ${this._renderGrid(t,e,n,m,l)}
-        ${"line"===a?this._renderLineChart(i,h,g,$,t):this._renderBarChart(i,d,u,p,r,t)}
+        ${"line"===a?this._renderLineChart(i,h,x,y,t):this._renderBarChart(i,d,u,p,r,t)}
         ${f?V`<line class="price-current-line" x1=${_} x2=${_} y1=${e.top} y2=${h}></line>`:q}
         ${!1===t.show_extremes?q:V`
-          <text class="price-extreme" x=${s.x} y=${Math.max(11,s.y-9)}>L</text>
-          <text class="price-extreme" x=${o.x} y=${Math.max(11,o.y-9)}>H</text>
+          <text class="price-extreme" x=${g} y=${Math.max(11,s.y-9)}>L</text>
+          <text class="price-extreme" x=${$} y=${Math.max(11,o.y-9)}>H</text>
         `}
         <line class="price-selected-line" x1=${r.x} x2=${r.x} y1=${e.top} y2=${h}></line>
         <title>${St(this.hass,r.timestamp)} ${kt(r.value,t)}</title>
@@ -618,4 +618,4 @@ const v=globalThis,w=t=>t,A=v.trustedTypes,E=A?A.createPolicy("lit-html",{create
     .checkbox input {
       width: auto;
     }
-  `,customElements.get("real-electricity-price-card")||customElements.define("real-electricity-price-card",Ut),customElements.get("real-electricity-price-card-editor")||customElements.define("real-electricity-price-card-editor",Ot),window.customCards=window.customCards||[],window.customCards.push({type:"real-electricity-price-card",name:"Real Electricity Price Card",description:"Interactive electricity price chart for real-electricity-price",preview:!1,version:"0.1.5"});
+  `,customElements.get("real-electricity-price-card")||customElements.define("real-electricity-price-card",Ut),customElements.get("real-electricity-price-card-editor")||customElements.define("real-electricity-price-card-editor",Ot),window.customCards=window.customCards||[],window.customCards.push({type:"real-electricity-price-card",name:"Real Electricity Price Card",description:"Interactive electricity price chart for real-electricity-price",preview:!1,version:"0.1.6"});

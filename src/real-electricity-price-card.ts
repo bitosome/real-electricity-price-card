@@ -1,6 +1,6 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 
-const CARD_VERSION = '0.1.5';
+const CARD_VERSION = '0.1.6';
 const DEFAULT_ENTITY = 'sensor.real_electricity_price_chart_data';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
 const DEFAULT_UNIT = '€/kWh';
@@ -555,6 +555,8 @@ class RealElectricityPriceCard extends LitElement {
     const ticks = domainTicks(domain);
     const currentX = xForTimestamp(Date.now(), domain, box);
     const showCurrent = config.show_current_marker !== false && currentX >= box.left && currentX <= box.width - box.right;
+    const minLabelX = type === 'bar' ? minPoint.x + (barSlotWidth / 2) : minPoint.x;
+    const maxLabelX = type === 'bar' ? maxPoint.x + (barSlotWidth / 2) : maxPoint.x;
     const gradientId = 'rep-line-fill';
     const lineGradientId = 'rep-line-color';
     const gradientSpan = Math.max(1, box.width - box.left - box.right);
@@ -589,8 +591,8 @@ class RealElectricityPriceCard extends LitElement {
           : this._renderBarChart(points, zeroY, barWidth, barSlotWidth, selected, config)}
         ${showCurrent ? svg`<line class="price-current-line" x1=${currentX} x2=${currentX} y1=${box.top} y2=${baseline}></line>` : nothing}
         ${config.show_extremes === false ? nothing : svg`
-          <text class="price-extreme" x=${minPoint.x} y=${Math.max(11, minPoint.y - 9)}>L</text>
-          <text class="price-extreme" x=${maxPoint.x} y=${Math.max(11, maxPoint.y - 9)}>H</text>
+          <text class="price-extreme" x=${minLabelX} y=${Math.max(11, minPoint.y - 9)}>L</text>
+          <text class="price-extreme" x=${maxLabelX} y=${Math.max(11, maxPoint.y - 9)}>H</text>
         `}
         <line class="price-selected-line" x1=${selected.x} x2=${selected.x} y1=${box.top} y2=${baseline}></line>
         <title>${formatDateTime(this.hass, selected.timestamp)} ${formatPrice(selected.value, config)}</title>
