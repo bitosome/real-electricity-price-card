@@ -1,6 +1,6 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 
-const CARD_VERSION = '0.1.7';
+const CARD_VERSION = '0.1.8';
 const DEFAULT_ENTITY = 'sensor.real_electricity_price_chart_data';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
 const DEFAULT_UNIT = '€/kWh';
@@ -456,7 +456,7 @@ class RealElectricityPriceCard extends LitElement {
     const type = chartType(config);
     const selector = selectorMode(config);
     const title = typeof config.name === 'string' ? config.name.trim() : '';
-    const box: ChartBox = { width: 360, height: chartHeight(config), left: 8, right: 34, top: 16, bottom: 27 };
+    const box: ChartBox = { width: 360, height: chartHeight(config), left: 8, right: 34, top: 15, bottom: 24 };
     const domain = fixedChartDomain();
     const visibleRawPoints = pointsInDomain(rawPoints, domain);
     const chartRawPoints = visibleRawPoints.length ? visibleRawPoints : rawPoints;
@@ -775,7 +775,7 @@ class RealElectricityPriceCard extends LitElement {
     .price-selected {
       flex: 0 0 auto;
       display: inline-flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: end;
       gap: 5px;
       max-width: min(58%, 172px);
@@ -908,7 +908,7 @@ class RealElectricityPriceCard extends LitElement {
     }
 
     .price-selected-line {
-      stroke: rgba(255, 255, 255, 0.42);
+      stroke: rgba(255, 255, 255, 0.36);
       stroke-width: 1;
       vector-effect: non-scaling-stroke;
     }
@@ -940,7 +940,7 @@ class RealElectricityPriceCard extends LitElement {
 
     .price-line {
       fill: none;
-      stroke-width: 4.2;
+      stroke-width: 4.3;
       stroke-linecap: round;
       stroke-linejoin: round;
       vector-effect: non-scaling-stroke;
@@ -950,8 +950,8 @@ class RealElectricityPriceCard extends LitElement {
     .price-time-label,
     .price-extreme {
       fill: var(--secondary-text-color);
-      font-size: 8.4px;
-      font-weight: 800;
+      font-size: 9px;
+      font-weight: 750;
       text-anchor: middle;
       dominant-baseline: middle;
     }
@@ -974,8 +974,8 @@ class RealElectricityPriceCard extends LitElement {
 
     .price-extreme {
       fill: var(--primary-text-color);
-      font-size: 12px;
-      font-weight: 900;
+      font-size: 11px;
+      font-weight: 850;
     }
 
     .price-selected-dot {
@@ -987,7 +987,7 @@ class RealElectricityPriceCard extends LitElement {
       min-height: 15px;
       box-sizing: border-box;
       aspect-ratio: 1 / 1;
-      border: 1px solid rgba(255, 255, 255, 0.56);
+      border: 1px solid rgba(255, 255, 255, 0.54);
       border-radius: 50%;
       background: rgba(0, 0, 0, 0.28);
       box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
