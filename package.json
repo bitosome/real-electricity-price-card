@@ -1,6 +1,6 @@
 {
   "name": "real-electricity-price-card",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "A Home Assistant Lovelace card for real-electricity-price hourly data",
   "keywords": [
     "home-assistant",

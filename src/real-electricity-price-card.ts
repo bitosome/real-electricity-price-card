@@ -1,6 +1,7 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
+import { designTokens } from './shared/design-tokens';
 
-const CARD_VERSION = '0.1.12';
+const CARD_VERSION = '0.1.13';
 const DEFAULT_TODAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_today';
 const DEFAULT_TOMORROW_ENTITY = 'sensor.real_electricity_price_hourly_prices_tomorrow';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
@@ -846,7 +847,7 @@ class RealElectricityPriceCard extends LitElement {
     fireEvent(this, 'hass-more-info', { entityId });
   }
 
-  static styles = css`
+  static styles = [designTokens, css`
     :host {
       display: block;
       color: var(--primary-text-color);
@@ -1154,7 +1155,7 @@ class RealElectricityPriceCard extends LitElement {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
-  `;
+  `];
 }
 
 class RealElectricityPriceCardEditor extends LitElement {
