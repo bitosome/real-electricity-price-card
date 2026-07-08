@@ -1,6 +1,6 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 
-const CARD_VERSION = '0.1.8';
+const CARD_VERSION = '0.1.9';
 const DEFAULT_ENTITY = 'sensor.real_electricity_price_chart_data';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
 const DEFAULT_UNIT = '€/kWh';
@@ -28,6 +28,9 @@ interface HomeAssistant {
   locale?: {
     language?: string;
     time_format?: string;
+  };
+  config?: {
+    time_zone?: string;
   };
 }
 
@@ -206,17 +209,32 @@ function timeFormatOptions(hass?: HomeAssistant): Intl.DateTimeFormatOptions {
   return options;
 }
 
+function homeTimeZone(hass?: HomeAssistant): string | undefined {
+  const zone = hass?.config?.time_zone;
+  return typeof zone === 'string' && zone.trim() ? zone.trim() : undefined;
+}
+
+function formatInHomeTimeZone(hass: HomeAssistant | undefined, timestamp: number, options: Intl.DateTimeFormatOptions): string {
+  const zone = homeTimeZone(hass);
+  const date = new Date(timestamp);
+  try {
+    return new Intl.DateTimeFormat(hass?.locale?.language, zone ? { ...options, timeZone: zone } : options).format(date);
+  } catch {
+    return new Intl.DateTimeFormat(hass?.locale?.language, options).format(date);
+  }
+}
+
 function formatDateLabel(hass: HomeAssistant | undefined, timestamp: number): string {
-  return new Intl.DateTimeFormat(hass?.locale?.language, {
+  return formatInHomeTimeZone(hass, timestamp, {
     day: 'numeric',
     month: 'long',
-  }).format(new Date(timestamp));
+  });
 }
 
 function formatTimeOnly(hass: HomeAssistant | undefined, timestamp: number): string {
-  return new Intl.DateTimeFormat(hass?.locale?.language, {
+  return formatInHomeTimeZone(hass, timestamp, {
     ...timeFormatOptions(hass),
-  }).format(new Date(timestamp));
+  });
 }
 
 function formatDateTime(hass: HomeAssistant | undefined, timestamp: number): string {
@@ -227,10 +245,61 @@ function formatTimeLabel(hass: HomeAssistant | undefined, timestamp: number): st
   return formatDateTime(hass, timestamp);
 }
 
-function fixedChartDomain(): ChartDomain {
+function timeZoneParts(timestamp: number, timeZone: string, options: Intl.DateTimeFormatOptions): Record<string, string> {
+  const formatter = new Intl.DateTimeFormat('en-US', { ...options, timeZone });
+  return formatter.formatToParts(new Date(timestamp)).reduce<Record<string, string>>((parts, part) => {
+    if (part.type !== 'literal') parts[part.type] = part.value;
+    return parts;
+  }, {});
+}
+
+function timeZoneOffsetMs(timestamp: number, timeZone: string): number {
+  const parts = timeZoneParts(timestamp, timeZone, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+  const year = Number(parts.year);
+  const month = Number(parts.month);
+  const day = Number(parts.day);
+  const hour = Number(parts.hour);
+  const minute = Number(parts.minute);
+  const second = Number(parts.second);
+  if (![year, month, day, hour, minute, second].every(Number.isFinite)) return 0;
+  return Date.UTC(year, month - 1, day, hour, minute, second) - timestamp;
+}
+
+function homeTimeZoneMidnight(hass?: HomeAssistant): number | undefined {
+  const zone = homeTimeZone(hass);
+  if (!zone) return undefined;
+  try {
+    const parts = timeZoneParts(Date.now(), zone, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const year = Number(parts.year);
+    const month = Number(parts.month);
+    const day = Number(parts.day);
+    if (![year, month, day].every(Number.isFinite)) return undefined;
+    const utcGuess = Date.UTC(year, month - 1, day, 0, 0, 0, 0);
+    const firstOffset = timeZoneOffsetMs(utcGuess, zone);
+    const firstStart = utcGuess - firstOffset;
+    const secondOffset = timeZoneOffsetMs(firstStart, zone);
+    return utcGuess - secondOffset;
+  } catch {
+    return undefined;
+  }
+}
+
+function fixedChartDomain(hass?: HomeAssistant): ChartDomain {
   const startDate = new Date();
   startDate.setHours(0, 0, 0, 0);
-  const start = startDate.getTime();
+  const start = homeTimeZoneMidnight(hass) ?? startDate.getTime();
   return {
     start,
     end: start + (CHART_HOURS * HOUR_MS),
@@ -457,7 +526,7 @@ class RealElectricityPriceCard extends LitElement {
     const selector = selectorMode(config);
     const title = typeof config.name === 'string' ? config.name.trim() : '';
     const box: ChartBox = { width: 360, height: chartHeight(config), left: 8, right: 34, top: 15, bottom: 24 };
-    const domain = fixedChartDomain();
+    const domain = fixedChartDomain(this.hass);
     const visibleRawPoints = pointsInDomain(rawPoints, domain);
     const chartRawPoints = visibleRawPoints.length ? visibleRawPoints : rawPoints;
     const range = valueRange(chartRawPoints, config);

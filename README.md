@@ -10,7 +10,7 @@ The card renders `sensor.real_electricity_price_chart_data` directly, using the 
 - Interactive selector for hour-by-hour price inspection, with hover or click/tap modes.
 - Live current-time marker uses the exact current minute while selection snaps by hourly price interval.
 - Optional title. Leave `name` empty or omit it to hide the title.
-- Fixed 48-hour chart window from the current local day start, so missing next-day prices appear as empty future space.
+- Fixed 48-hour chart window from the current Home Assistant timezone day start, so missing next-day prices appear as empty future space.
 - Uses the integration-provided `fillColor` values by default.
 - Optional color overrides for past, current, future, and cheap-hour colors.
 - Optional exact `color_overrides` map for replacing any color emitted by the sensor.
