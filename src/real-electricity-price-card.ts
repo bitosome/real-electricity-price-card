@@ -1,7 +1,6 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 
-const CARD_VERSION = '0.1.11';
-const DEFAULT_ENTITY = 'sensor.real_electricity_price_chart_data';
+const CARD_VERSION = '0.1.12';
 const DEFAULT_TODAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_today';
 const DEFAULT_TOMORROW_ENTITY = 'sensor.real_electricity_price_hourly_prices_tomorrow';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
@@ -11,16 +10,6 @@ const HOUR_MS = 60 * 60 * 1000;
 const CHART_HOURS = 48;
 
 type SelectorMode = 'hover' | 'click';
-type DataSourceMode = 'auto' | 'hourly' | 'chart_data';
-
-const SENSOR_COLOR_KEYS: Record<string, keyof RealElectricityPriceCardConfig> = {
-  '#bfdbfe': 'past_color',
-  '#3b82f6': 'current_hour_color',
-  '#93c5fd': 'future_color',
-  '#bbf7d0': 'cheap_past_color',
-  '#86efac': 'cheap_color',
-  '#22c55e': 'cheap_current_color',
-};
 
 interface HassEntity {
   state: string;
@@ -40,8 +29,6 @@ interface HomeAssistant {
 
 interface RealElectricityPriceCardConfig {
   type?: string;
-  entity?: string;
-  data_source?: DataSourceMode;
   today_entity?: string;
   tomorrow_entity?: string;
   current_price_entity?: string;
@@ -61,29 +48,17 @@ interface RealElectricityPriceCardConfig {
   show_current_marker?: boolean;
   show_extremes?: boolean;
   show_stats?: boolean;
-  use_sensor_colors?: boolean;
   past_color?: string;
   current_hour_color?: string;
   future_color?: string;
   cheap_past_color?: string;
   cheap_color?: string;
   cheap_current_color?: string;
-  line_color?: string;
   fill_color?: string;
   marker_color?: string;
   grid_color?: string;
   chart_background?: string;
   card_background?: string;
-  color_overrides?: Record<string, string>;
-}
-
-interface ChartDataItem {
-  x?: number | string;
-  y?: number | string;
-  fillColor?: string;
-  start_time?: string;
-  formatted_time?: string;
-  formatted_price?: string;
 }
 
 interface HourlyPriceItem {
@@ -99,11 +74,7 @@ interface HourlyPriceItem {
 interface PricePoint {
   timestamp: number;
   value: number;
-  color?: string;
   sourceTimestamp?: number;
-  startTime?: string;
-  formattedTime?: string;
-  formattedPrice?: string;
 }
 
 interface ChartPoint extends PricePoint {
@@ -135,7 +106,6 @@ interface PriceDataResult {
   points: PricePoint[];
   moreInfoEntityId?: string;
   missingEntityIds: string[];
-  source: 'hourly' | 'chart_data';
 }
 
 function fireEvent(node: HTMLElement, type: string, detail: unknown): void {
@@ -150,16 +120,6 @@ function configNumber(value: unknown, min: number, max: number): number | undefi
   const numberValue = Number(value);
   if (!Number.isFinite(numberValue)) return undefined;
   return Math.max(min, Math.min(max, numberValue));
-}
-
-function colorValue(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
-  return trimmed || undefined;
-}
-
-function normalizedColor(value: string | undefined): string | undefined {
-  return value ? value.trim().toLowerCase() : undefined;
 }
 
 function parseTimestamp(value: unknown): number | undefined {
@@ -182,28 +142,6 @@ function parseNumberValue(...values: unknown[]): number | undefined {
   return undefined;
 }
 
-function parsePricePoints(entity: HassEntity | undefined): PricePoint[] {
-  const data = entity?.attributes?.chart_data;
-  if (!Array.isArray(data)) return [];
-  return data.reduce<PricePoint[]>((points, item) => {
-    const raw = item as ChartDataItem | [unknown, unknown];
-    const timestamp = Array.isArray(raw)
-      ? parseTimestamp(raw[0])
-      : parseTimestamp(raw.x) ?? parseTimestamp(raw.start_time);
-    const value = Number(Array.isArray(raw) ? raw[1] : raw.y);
-    if (timestamp === undefined || !Number.isFinite(value)) return points;
-    points.push({
-      timestamp,
-      value,
-      color: Array.isArray(raw) ? undefined : colorValue(raw.fillColor),
-      startTime: Array.isArray(raw) ? undefined : raw.start_time,
-      formattedTime: Array.isArray(raw) ? undefined : raw.formatted_time,
-      formattedPrice: Array.isArray(raw) ? undefined : raw.formatted_price,
-    });
-    return points;
-  }, []).sort((a, b) => a.timestamp - b.timestamp);
-}
-
 function parseHourlyPricePoints(entity: HassEntity | undefined): PricePoint[] {
   const data = entity?.attributes?.hourly_prices;
   if (!Array.isArray(data)) return [];
@@ -220,7 +158,6 @@ function parseHourlyPricePoints(entity: HassEntity | undefined): PricePoint[] {
       timestamp,
       value,
       sourceTimestamp: timestamp,
-      startTime: Array.isArray(raw) ? undefined : raw.start_time,
     });
     return points;
   }, []).sort((a, b) => a.timestamp - b.timestamp);
@@ -246,10 +183,6 @@ function normalizeHourlyDay(points: PricePoint[], dayStart: number): PricePoint[
 
 function chartType(config: RealElectricityPriceCardConfig): 'bar' | 'line' {
   return (config.chart_type || config.graph_type) === 'line' ? 'line' : 'bar';
-}
-
-function dataSourceMode(config: RealElectricityPriceCardConfig): DataSourceMode {
-  return config.data_source === 'hourly' || config.data_source === 'chart_data' ? config.data_source : 'auto';
 }
 
 function selectorMode(config: RealElectricityPriceCardConfig): SelectorMode {
@@ -386,29 +319,8 @@ function fixedChartDomain(hass?: HomeAssistant): ChartDomain {
   };
 }
 
-function pointsInDomain(points: PricePoint[], domain: ChartDomain): PricePoint[] {
-  return points.filter((point) => point.timestamp >= domain.start && point.timestamp < domain.end);
-}
-
 function closeTimestamp(a: number, b: number): boolean {
   return Math.abs(a - b) < 60_000;
-}
-
-function pointsForFixedDomain(points: PricePoint[], domain: ChartDomain): PricePoint[] {
-  const ordered = [...points].sort((a, b) => a.timestamp - b.timestamp);
-  for (let index = 0; index <= ordered.length - CHART_HOURS; index += 1) {
-    const slice = ordered.slice(index, index + CHART_HOURS);
-    const startsOneHourLate = closeTimestamp(slice[0].timestamp, domain.start + HOUR_MS);
-    const endsAtDomainEnd = closeTimestamp(slice[slice.length - 1].timestamp, domain.end);
-    if (startsOneHourLate && endsAtDomainEnd) {
-      return slice.map((point, pointIndex) => ({
-        ...point,
-        sourceTimestamp: point.timestamp,
-        timestamp: domain.start + (pointIndex * HOUR_MS),
-      }));
-    }
-  }
-  return pointsInDomain(ordered, domain);
 }
 
 function hourlyPriceData(hass: HomeAssistant | undefined, config: RealElectricityPriceCardConfig, domain: ChartDomain): PriceDataResult {
@@ -427,30 +339,7 @@ function hourlyPriceData(hass: HomeAssistant | undefined, config: RealElectricit
     points: [...todayPoints, ...tomorrowPoints].sort((a, b) => a.timestamp - b.timestamp),
     moreInfoEntityId: todayEntity ? todayEntityId : tomorrowEntity ? tomorrowEntityId : undefined,
     missingEntityIds,
-    source: 'hourly',
   };
-}
-
-function chartDataPriceData(hass: HomeAssistant | undefined, config: RealElectricityPriceCardConfig, domain: ChartDomain): PriceDataResult {
-  const entityId = config.entity || DEFAULT_ENTITY;
-  const entity = hass?.states[entityId];
-  const rawPoints = parsePricePoints(entity);
-  const visibleRawPoints = pointsForFixedDomain(rawPoints, domain);
-  return {
-    points: visibleRawPoints.length ? visibleRawPoints : rawPoints,
-    moreInfoEntityId: entity ? entityId : undefined,
-    missingEntityIds: entity ? [] : [entityId],
-    source: 'chart_data',
-  };
-}
-
-function collectPriceData(hass: HomeAssistant | undefined, config: RealElectricityPriceCardConfig, domain: ChartDomain): PriceDataResult {
-  const source = dataSourceMode(config);
-  if (source !== 'chart_data') {
-    const hourly = hourlyPriceData(hass, config, domain);
-    if (hourly.points.length || source === 'hourly') return hourly;
-  }
-  return chartDataPriceData(hass, config, domain);
 }
 
 function valueRange(points: PricePoint[], config: RealElectricityPriceCardConfig): PriceRange {
@@ -574,7 +463,7 @@ function cheapPriceThreshold(hass: HomeAssistant | undefined, config: RealElectr
   return parseNumberValue(hass?.states[entityId]?.state);
 }
 
-function generatedPointColor(
+function resolvePointColor(
   point: PricePoint,
   config: RealElectricityPriceCardConfig,
   cheapThreshold: number | undefined,
@@ -593,21 +482,6 @@ function generatedPointColor(
   return config.future_color || '#93c5fd';
 }
 
-function resolvePointColor(
-  point: PricePoint,
-  config: RealElectricityPriceCardConfig,
-  cheapThreshold: number | undefined,
-  now: number,
-): string {
-  const original = normalizedColor(point.color);
-  const exactOverride = original ? config.color_overrides?.[original] || config.color_overrides?.[point.color || ''] : undefined;
-  if (exactOverride) return exactOverride;
-  const semanticKey = original ? SENSOR_COLOR_KEYS[original] : undefined;
-  if (config.use_sensor_colors !== false && semanticKey && colorValue(config[semanticKey])) return String(config[semanticKey]);
-  if (config.use_sensor_colors !== false && point.color) return point.color;
-  return generatedPointColor(point, config, cheapThreshold, now);
-}
-
 function currentPriceValue(hass: HomeAssistant | undefined, config: RealElectricityPriceCardConfig): number | undefined {
   const entityId = config.current_price_entity || DEFAULT_CURRENT_PRICE_ENTITY;
   const raw = hass?.states[entityId]?.state;
@@ -617,8 +491,6 @@ function currentPriceValue(hass: HomeAssistant | undefined, config: RealElectric
 
 function normalizeConfig(config: RealElectricityPriceCardConfig): RealElectricityPriceCardConfig {
   return {
-    entity: DEFAULT_ENTITY,
-    data_source: 'auto',
     today_entity: DEFAULT_TODAY_ENTITY,
     tomorrow_entity: DEFAULT_TOMORROW_ENTITY,
     current_price_entity: DEFAULT_CURRENT_PRICE_ENTITY,
@@ -633,14 +505,11 @@ function normalizeConfig(config: RealElectricityPriceCardConfig): RealElectricit
     show_current_marker: true,
     show_extremes: true,
     show_stats: true,
-    use_sensor_colors: true,
-    line_color: '#ffc928',
     fill_color: 'rgba(56, 199, 243, 0.18)',
     marker_color: '#38c7f3',
     grid_color: 'rgba(255, 255, 255, 0.14)',
     chart_background: 'rgba(33, 52, 62, 0.88)',
     card_background: 'var(--ha-card-background, var(--card-background-color, #1f1f1f))',
-    color_overrides: {},
     ...config,
   };
 }
@@ -670,7 +539,6 @@ class RealElectricityPriceCard extends LitElement {
   public static getStubConfig(): RealElectricityPriceCardConfig {
     return {
       type: 'custom:real-electricity-price-card',
-      data_source: 'auto',
       today_entity: DEFAULT_TODAY_ENTITY,
       tomorrow_entity: DEFAULT_TOMORROW_ENTITY,
       current_price_entity: DEFAULT_CURRENT_PRICE_ENTITY,
@@ -704,12 +572,11 @@ class RealElectricityPriceCard extends LitElement {
     if (!this._config) return html``;
     const config = normalizeConfig(this._config);
     const domain = fixedChartDomain(this.hass);
-    const priceData = collectPriceData(this.hass, config, domain);
+    const priceData = hourlyPriceData(this.hass, config, domain);
 
     if (!priceData.points.length) {
       const missing = priceData.missingEntityIds.length ? ` Missing: ${priceData.missingEntityIds.join(', ')}` : '';
-      const sourceLabel = priceData.source === 'hourly' ? 'hourly_prices' : 'chart_data';
-      return this._renderError(`No ${sourceLabel} found.${missing}`);
+      return this._renderError(`No hourly_prices found.${missing}`);
     }
 
     const type = chartType(config);
@@ -940,11 +807,10 @@ class RealElectricityPriceCard extends LitElement {
   private _renderLineChart(points: ChartPoint[], baseline: number, fillGradientId: string, lineGradientId: string, config: RealElectricityPriceCardConfig): TemplateResult {
     const path = smoothPath(points);
     const fillPath = areaPath(points, baseline);
-    const stroke = config.use_sensor_colors === false ? (config.line_color || '#ffc928') : `url(#${lineGradientId})`;
     return svg`
       <path class="price-line-area" d=${fillPath} fill=${`url(#${fillGradientId})`}></path>
       <path class="price-line-shadow" d=${path}></path>
-      <path class="price-line" d=${path} stroke=${stroke}></path>
+      <path class="price-line" d=${path} stroke=${`url(#${lineGradientId})`}></path>
     `;
   }
 
@@ -1310,19 +1176,10 @@ class RealElectricityPriceCardEditor extends LitElement {
     return html`
       <div class="editor">
         ${this._textField('Name (optional)', 'name', config.name || '')}
-        <label>
-          <span>Data Source</span>
-          <select .value=${dataSourceMode(config)} @change=${(ev: Event) => this._setValue('data_source', (ev.target as HTMLSelectElement).value)}>
-            <option value="auto">Hourly sensors, fallback to chart data</option>
-            <option value="hourly">Hourly sensors only</option>
-            <option value="chart_data">Chart data sensor only</option>
-          </select>
-        </label>
         <div class="grid">
           ${this._textField('Today Prices Entity', 'today_entity', config.today_entity || DEFAULT_TODAY_ENTITY)}
           ${this._textField('Tomorrow Prices Entity', 'tomorrow_entity', config.tomorrow_entity || DEFAULT_TOMORROW_ENTITY)}
         </div>
-        ${this._textField('Chart Data Entity (fallback)', 'entity', config.entity || DEFAULT_ENTITY)}
         ${this._textField('Current Price Entity', 'current_price_entity', config.current_price_entity || DEFAULT_CURRENT_PRICE_ENTITY)}
         ${this._textField('Acceptable Price Entity', 'cheap_price_entity', config.cheap_price_entity || DEFAULT_CHEAP_PRICE_ENTITY)}
         <label>
@@ -1352,7 +1209,6 @@ class RealElectricityPriceCardEditor extends LitElement {
           ${this._numberField('Cheap Threshold', 'cheap_threshold', config.cheap_threshold ?? '', undefined, undefined, true)}
         </div>
         <div class="toggles">
-          ${this._checkbox('Use Chart Data Colors', 'use_sensor_colors', config.use_sensor_colors !== false)}
           ${this._checkbox('Current Marker', 'show_current_marker', config.show_current_marker !== false)}
           ${this._checkbox('Extremes', 'show_extremes', config.show_extremes !== false)}
           ${this._checkbox('Stats', 'show_stats', config.show_stats !== false)}
@@ -1365,19 +1221,11 @@ class RealElectricityPriceCardEditor extends LitElement {
           ${this._colorField('Cheap Past', 'cheap_past_color', config.cheap_past_color || '#bbf7d0')}
           ${this._colorField('Cheap', 'cheap_color', config.cheap_color || '#86efac')}
           ${this._colorField('Cheap Current', 'cheap_current_color', config.cheap_current_color || '#22c55e')}
-          ${this._colorField('Line', 'line_color', config.line_color || '#ffc928')}
           ${this._colorField('Marker', 'marker_color', config.marker_color || '#38c7f3')}
         </div>
         ${this._textField('Area Fill Color', 'fill_color', config.fill_color || 'rgba(56, 199, 243, 0.18)')}
         ${this._textField('Grid Color', 'grid_color', config.grid_color || 'rgba(255, 255, 255, 0.14)')}
         ${this._textField('Chart Background', 'chart_background', config.chart_background || 'rgba(33, 52, 62, 0.88)')}
-        <label>
-          <span>Exact Color Overrides JSON</span>
-          <textarea
-            .value=${JSON.stringify(config.color_overrides || {}, null, 2)}
-            @change=${(ev: Event) => this._setColorOverrides((ev.target as HTMLTextAreaElement).value)}
-          ></textarea>
-        </label>
       </div>
     `;
   }
@@ -1445,15 +1293,6 @@ class RealElectricityPriceCardEditor extends LitElement {
         <span>${label}</span>
       </label>
     `;
-  }
-
-  private _setColorOverrides(value: string): void {
-    try {
-      const parsed = JSON.parse(value || '{}') as Record<string, string>;
-      this._setValue('color_overrides', parsed && typeof parsed === 'object' ? parsed : {});
-    } catch {
-      // Keep the previous valid value.
-    }
   }
 
   private _setValue(key: keyof RealElectricityPriceCardConfig, value: unknown): void {
