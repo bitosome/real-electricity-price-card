@@ -132,3 +132,17 @@ The card expects `attributes.hourly_prices` on the today and tomorrow sensors. E
 ```
 
 The card reads `actual_price` first, then falls back to `price`, `y`, or `nord_pool_price`.
+
+## Design System & UI Implementation
+
+This card is part of the `bitosome` Home Assistant card family and follows a shared design system. The **single source of truth** is [`space-hub-card`](https://github.com/bitosome/space-hub-card) — specifically `space-hub-card/src/shared/design-tokens.ts`. See its [Design System & UI Implementation](https://github.com/bitosome/space-hub-card#design-system--ui-implementation) section for the full approach and file map.
+
+- The design tokens are **vendored** into this repo at `src/shared/design-tokens.ts` and carry an `AUTO-SYNCED … DO NOT EDIT` banner. Update tokens in `space-hub-card` and run its `scripts/sync-design-tokens.sh` — never edit the vendored copy directly.
+- Compose the tokens into the card's Lit styles: `static styles = [designTokens, css\`…\`]`.
+
+Rules when implementing or changing UI (these mirror `space-hub-card`, so every card looks and behaves the same):
+
+1. **Never hardcode** colors, spacing, radii, or shadows. Reference the CSS custom properties instead — e.g. `var(--tile-border-radius)`, `var(--tile-shadow-default)`, `var(--large-gap)`, `var(--status-active-color)`.
+2. **Reuse Home Assistant primitives** (`ha-card`, `ha-icon`, and `ha-control-button` where applicable) rather than reimplementing them.
+3. **Selection/glow layers render below surfaces**: a glow/selection layer uses `z-index: 0`, the tile/panel surface uses `z-index: 1`, and the group container is a **single stacking context** so a glow never paints over a neighbouring tile. Individual tile wrappers must not create their own stacking context.
+4. **Use the semantic status palette** (`--status-*`) for state colors.
