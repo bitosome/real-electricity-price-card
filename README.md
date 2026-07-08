@@ -11,6 +11,7 @@ The card renders `sensor.real_electricity_price_chart_data` directly, using the 
 - Live current-time marker uses the exact current minute while selection snaps by hourly price interval.
 - Optional title. Leave `name` empty or omit it to hide the title.
 - Fixed 48-hour chart window from the current Home Assistant timezone day start, so missing next-day prices appear as empty future space.
+- Normalizes the integration's full 48-value `01:00..00:00` sequence into calendar-day `00:00..23:00` chart slots when that shifted shape is emitted.
 - Uses the integration-provided `fillColor` values by default.
 - Optional color overrides for past, current, future, and cheap-hour colors.
 - Optional exact `color_overrides` map for replacing any color emitted by the sensor.

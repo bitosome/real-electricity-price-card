@@ -1,6 +1,6 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 
-const CARD_VERSION = '0.1.9';
+const CARD_VERSION = '0.1.10';
 const DEFAULT_ENTITY = 'sensor.real_electricity_price_chart_data';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
 const DEFAULT_UNIT = '€/kWh';
@@ -81,6 +81,7 @@ interface PricePoint {
   timestamp: number;
   value: number;
   color?: string;
+  sourceTimestamp?: number;
   startTime?: string;
   formattedTime?: string;
   formattedPrice?: string;
@@ -310,6 +311,27 @@ function pointsInDomain(points: PricePoint[], domain: ChartDomain): PricePoint[]
   return points.filter((point) => point.timestamp >= domain.start && point.timestamp < domain.end);
 }
 
+function closeTimestamp(a: number, b: number): boolean {
+  return Math.abs(a - b) < 60_000;
+}
+
+function pointsForFixedDomain(points: PricePoint[], domain: ChartDomain): PricePoint[] {
+  const ordered = [...points].sort((a, b) => a.timestamp - b.timestamp);
+  for (let index = 0; index <= ordered.length - CHART_HOURS; index += 1) {
+    const slice = ordered.slice(index, index + CHART_HOURS);
+    const startsOneHourLate = closeTimestamp(slice[0].timestamp, domain.start + HOUR_MS);
+    const endsAtDomainEnd = closeTimestamp(slice[slice.length - 1].timestamp, domain.end);
+    if (startsOneHourLate && endsAtDomainEnd) {
+      return slice.map((point, pointIndex) => ({
+        ...point,
+        sourceTimestamp: point.timestamp,
+        timestamp: domain.start + (pointIndex * HOUR_MS),
+      }));
+    }
+  }
+  return pointsInDomain(ordered, domain);
+}
+
 function valueRange(points: PricePoint[], config: RealElectricityPriceCardConfig): PriceRange {
   const values = points.map((point) => point.value);
   const rawMin = Math.min(...values);
@@ -358,14 +380,26 @@ function pointIndexAtTimestamp(points: ChartPoint[], timestamp: number): number 
   return index;
 }
 
+function pointIndexAtSourceTimestamp(points: ChartPoint[], timestamp: number): number {
+  if (!points.length) return 0;
+  const pointTime = (point: ChartPoint): number => point.sourceTimestamp ?? point.timestamp;
+  if (timestamp <= pointTime(points[0])) return 0;
+  let index = 0;
+  for (let pointIndex = 1; pointIndex < points.length; pointIndex += 1) {
+    if (pointTime(points[pointIndex]) > timestamp) break;
+    index = pointIndex;
+  }
+  return index;
+}
+
 function currentSelectionPoint(points: ChartPoint[], timestamp: number, domain: ChartDomain, box: ChartBox): ChartPoint {
-  const source = points[pointIndexAtTimestamp(points, timestamp)];
+  const source = points[pointIndexAtSourceTimestamp(points, timestamp)];
   if (timestamp < domain.start || timestamp > domain.end) return source;
   return {
     ...source,
     timestamp,
     x: xForTimestamp(timestamp, domain, box),
-    sourceTimestamp: source.timestamp,
+    sourceTimestamp: source.sourceTimestamp ?? source.timestamp,
   };
 }
 
@@ -373,7 +407,7 @@ function columnCenterPoint(point: ChartPoint, barSlotWidth: number): ChartPoint 
   return {
     ...point,
     x: point.x + (barSlotWidth / 2),
-    sourceTimestamp: point.timestamp,
+    sourceTimestamp: point.sourceTimestamp ?? point.timestamp,
   };
 }
 
@@ -527,7 +561,7 @@ class RealElectricityPriceCard extends LitElement {
     const title = typeof config.name === 'string' ? config.name.trim() : '';
     const box: ChartBox = { width: 360, height: chartHeight(config), left: 8, right: 34, top: 15, bottom: 24 };
     const domain = fixedChartDomain(this.hass);
-    const visibleRawPoints = pointsInDomain(rawPoints, domain);
+    const visibleRawPoints = pointsForFixedDomain(rawPoints, domain);
     const chartRawPoints = visibleRawPoints.length ? visibleRawPoints : rawPoints;
     const range = valueRange(chartRawPoints, config);
     const points = buildChartPoints(chartRawPoints, box, range, domain);
@@ -720,12 +754,15 @@ class RealElectricityPriceCard extends LitElement {
     selected: ChartPoint,
     config: RealElectricityPriceCardConfig,
   ): TemplateResult[] {
-    const selectedTimestamp = selected.sourceTimestamp ?? selected.timestamp;
+    const selectedTimestamp = selected.timestamp;
+    const selectedSourceTimestamp = selected.sourceTimestamp;
     const barInset = Math.max(0, (barSlotWidth - barWidth) / 2);
     return points.map((point) => {
       const top = Math.min(point.y, zeroY);
       const height = Math.max(1, Math.abs(zeroY - point.y));
-      const selectedClass = point.timestamp === selectedTimestamp ? ' price-bar-selected' : '';
+      const selectedClass = point.timestamp === selectedTimestamp || (
+        selectedSourceTimestamp !== undefined && point.sourceTimestamp === selectedSourceTimestamp
+      ) ? ' price-bar-selected' : '';
       return svg`
         <rect
           class=${`price-bar${selectedClass}`}
