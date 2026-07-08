@@ -1,7 +1,7 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 import { designTokens } from './shared/design-tokens';
 
-const CARD_VERSION = '0.1.13';
+const CARD_VERSION = '0.1.14';
 const DEFAULT_TODAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_today';
 const DEFAULT_TOMORROW_ENTITY = 'sensor.real_electricity_price_hourly_prices_tomorrow';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
@@ -878,7 +878,7 @@ class RealElectricityPriceCard extends LitElement {
       align-items: flex-start;
       justify-content: space-between;
       gap: 16px;
-      margin-bottom: 12px;
+      margin-bottom: var(--large-gap);
     }
 
     .price-title {
@@ -941,14 +941,14 @@ class RealElectricityPriceCard extends LitElement {
     .price-stats {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 12px;
+      gap: var(--tile-padding);
+      margin-bottom: var(--large-gap);
     }
 
     .price-stat {
       min-width: 0;
       padding: 8px 10px;
-      border-radius: 8px;
+      border-radius: var(--tile-border-radius);
       background: rgba(0, 0, 0, 0.12);
       box-sizing: border-box;
     }
@@ -984,7 +984,7 @@ class RealElectricityPriceCard extends LitElement {
       gap: 5px;
       padding: 7px 8px 6px;
       box-sizing: border-box;
-      border-radius: 10px;
+      border-radius: var(--tile-border-radius);
       background: var(--rep-chart-bg);
       overflow: hidden;
     }
@@ -1139,7 +1139,7 @@ class RealElectricityPriceCard extends LitElement {
 
     @media (max-width: 480px) {
       .price-content {
-        padding: 12px;
+        padding: var(--tile-padding-large);
       }
 
       .price-head {

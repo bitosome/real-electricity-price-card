@@ -1,14 +1,22 @@
+// AUTO-SYNCED from space-hub-card/src/shared/design-tokens.ts — DO NOT EDIT.
+// Run space-hub-card/scripts/sync-design-tokens.sh to update.
 import { css, CSSResultGroup, unsafeCSS } from 'lit';
 
 /**
  * Canonical design tokens for the bitosome Home Assistant card family.
  *
- * VENDORED — the source of truth lives in `space-hub-card/src/shared/design-tokens.ts`.
- * Keep this file in sync with that reference so every card shares one look & feel.
+ * This module is the SINGLE SOURCE OF TRUTH for the shared look & feel
+ * (colors, spacing, radii, shadows, chip/tile styling) used by:
+ *   - space-hub-card            (reference)
+ *   - real-electricity-price-card
+ *   - smartevse-dual-charger-card
  *
- * Framework-agnostic: `DESIGN_TOKENS_CSS` is a plain CSS string; `designTokens`
- * wraps it for LitElement `static styles` composition. Reference these variables
- * instead of hardcoding colors/spacing/radii/shadows.
+ * It is intentionally framework-agnostic: `DESIGN_TOKENS_CSS` is a plain CSS
+ * string (usable by vanilla `customElements` cards that build a <style> tag),
+ * and `designTokens` wraps it for LitElement `static styles` composition.
+ *
+ * Do NOT hardcode colors/spacing in component code — reference these variables
+ * so every card stays visually consistent.
  */
 export const DESIGN_TOKENS_CSS = `
   :host {
