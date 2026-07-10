@@ -1,7 +1,8 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 import { designTokens } from './shared/design-tokens';
 
-const CARD_VERSION = '0.1.15';
+const CARD_VERSION = '0.1.16';
+const DEFAULT_YESTERDAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_yesterday';
 const DEFAULT_TODAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_today';
 const DEFAULT_TOMORROW_ENTITY = 'sensor.real_electricity_price_hourly_prices_tomorrow';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
@@ -30,6 +31,7 @@ interface HomeAssistant {
 
 interface RealElectricityPriceCardConfig {
   type?: string;
+  yesterday_entity?: string;
   today_entity?: string;
   tomorrow_entity?: string;
   current_price_entity?: string;
@@ -167,24 +169,6 @@ function parseHourlyPricePoints(entity: HassEntity | undefined): PricePoint[] {
     });
     return points;
   }, []).sort((a, b) => a.timestamp - b.timestamp);
-}
-
-function normalizeHourlyDay(points: PricePoint[], dayStart: number): PricePoint[] {
-  const ordered = [...points].sort((a, b) => a.timestamp - b.timestamp);
-  const dayEnd = dayStart + (24 * HOUR_MS);
-  for (let index = 0; index <= ordered.length - 24; index += 1) {
-    const slice = ordered.slice(index, index + 24);
-    const startsOneHourLate = closeTimestamp(slice[0].timestamp, dayStart + HOUR_MS);
-    const endsAtDayEnd = closeTimestamp(slice[slice.length - 1].timestamp, dayEnd);
-    if (startsOneHourLate && endsAtDayEnd) {
-      return slice.map((point, pointIndex) => ({
-        ...point,
-        sourceTimestamp: point.timestamp,
-        timestamp: dayStart + (pointIndex * HOUR_MS),
-      }));
-    }
-  }
-  return ordered.filter((point) => point.timestamp >= dayStart && point.timestamp < dayEnd);
 }
 
 function chartType(config: RealElectricityPriceCardConfig): 'bar' | 'line' {
@@ -325,24 +309,31 @@ function fixedChartDomain(hass?: HomeAssistant): ChartDomain {
   };
 }
 
-function closeTimestamp(a: number, b: number): boolean {
-  return Math.abs(a - b) < 60_000;
-}
-
 function hourlyPriceData(hass: HomeAssistant | undefined, config: RealElectricityPriceCardConfig, domain: ChartDomain): PriceDataResult {
+  const yesterdayEntityId = config.yesterday_entity || DEFAULT_YESTERDAY_ENTITY;
   const todayEntityId = config.today_entity || DEFAULT_TODAY_ENTITY;
   const tomorrowEntityId = config.tomorrow_entity || DEFAULT_TOMORROW_ENTITY;
+  const yesterdayEntity = hass?.states[yesterdayEntityId];
   const todayEntity = hass?.states[todayEntityId];
   const tomorrowEntity = hass?.states[tomorrowEntityId];
-  const todayPoints = normalizeHourlyDay(parseHourlyPricePoints(todayEntity), domain.start);
-  const tomorrowPoints = normalizeHourlyDay(parseHourlyPricePoints(tomorrowEntity), domain.start + (24 * HOUR_MS));
+  const rawPoints = [
+    ...parseHourlyPricePoints(yesterdayEntity),
+    ...parseHourlyPricePoints(todayEntity),
+    ...parseHourlyPricePoints(tomorrowEntity),
+  ];
+  const pointsByTimestamp = rawPoints.reduce<Map<number, PricePoint>>((points, point) => {
+    if (point.timestamp >= domain.start && point.timestamp < domain.end) {
+      points.set(point.timestamp, point);
+    }
+    return points;
+  }, new Map());
   const missingEntityIds = [
     todayEntity ? undefined : todayEntityId,
     tomorrowEntity ? undefined : tomorrowEntityId,
   ].filter((entityId): entityId is string => Boolean(entityId));
 
   return {
-    points: [...todayPoints, ...tomorrowPoints].sort((a, b) => a.timestamp - b.timestamp),
+    points: [...pointsByTimestamp.values()].sort((a, b) => a.timestamp - b.timestamp),
     moreInfoEntityId: todayEntity ? todayEntityId : tomorrowEntity ? tomorrowEntityId : undefined,
     missingEntityIds,
   };
@@ -524,6 +515,7 @@ function currentPriceValue(hass: HomeAssistant | undefined, config: RealElectric
 
 function normalizeConfig(config: RealElectricityPriceCardConfig): RealElectricityPriceCardConfig {
   return {
+    yesterday_entity: DEFAULT_YESTERDAY_ENTITY,
     today_entity: DEFAULT_TODAY_ENTITY,
     tomorrow_entity: DEFAULT_TOMORROW_ENTITY,
     current_price_entity: DEFAULT_CURRENT_PRICE_ENTITY,
@@ -572,6 +564,7 @@ class RealElectricityPriceCard extends LitElement {
   public static getStubConfig(): RealElectricityPriceCardConfig {
     return {
       type: 'custom:real-electricity-price-card',
+      yesterday_entity: DEFAULT_YESTERDAY_ENTITY,
       today_entity: DEFAULT_TODAY_ENTITY,
       tomorrow_entity: DEFAULT_TOMORROW_ENTITY,
       current_price_entity: DEFAULT_CURRENT_PRICE_ENTITY,
@@ -1221,6 +1214,7 @@ class RealElectricityPriceCardEditor extends LitElement {
     return html`
       <div class="editor">
         ${this._textField('Name (optional)', 'name', config.name || '')}
+        ${this._textField('Yesterday Prices Entity', 'yesterday_entity', config.yesterday_entity || DEFAULT_YESTERDAY_ENTITY)}
         <div class="grid">
           ${this._textField('Today Prices Entity', 'today_entity', config.today_entity || DEFAULT_TODAY_ENTITY)}
           ${this._textField('Tomorrow Prices Entity', 'tomorrow_entity', config.tomorrow_entity || DEFAULT_TOMORROW_ENTITY)}

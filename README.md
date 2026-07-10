@@ -2,14 +2,15 @@
 
 A standalone Home Assistant Lovelace card for the `real-electricity-price` integration.
 
-The card renders a fixed 48-hour electricity price chart from the integration's raw hourly price sensors for today and tomorrow. It does not use ApexCharts and does not use the legacy chart-data sensor.
+The card renders a fixed 48-hour electricity price chart from the integration's raw hourly price sensors. It does not use ApexCharts and does not use the legacy chart-data sensor.
 
 ## Features
 
-- Uses raw `attributes.hourly_prices` from today and tomorrow price sensors.
+- Uses raw `attributes.hourly_prices` from yesterday, today, and tomorrow price sensors.
 - Fixed 48-hour chart window from the current Home Assistant timezone day start.
 - Missing tomorrow prices remain empty future space, so it is clear when next-day data has not arrived yet.
-- Normalizes the integration's `01:00..00:00` hourly sequence into calendar `00:00..23:00` chart slots.
+- Uses each raw `start_time` as the chart position; prices are not shifted or normalized into different hours.
+- Uses yesterday's raw sensor to fill the current day's `00:00 -> 01:00` boundary interval, because the integration stores that interval in yesterday's array.
 - Bar or step-line chart rendering.
 - Interactive selector for hour-by-hour price inspection, with hover or click/tap modes.
 - Live current-time marker uses the exact current minute while selection snaps by hourly price interval.
@@ -58,6 +59,7 @@ With default `real-electricity-price` entity names, no extra YAML is required.
 ```yaml
 type: custom:real-electricity-price-card
 name: Electricity Price
+yesterday_entity: sensor.real_electricity_price_hourly_prices_yesterday
 today_entity: sensor.real_electricity_price_hourly_prices_today
 tomorrow_entity: sensor.real_electricity_price_hourly_prices_tomorrow
 current_price_entity: sensor.real_electricity_price_current_price
@@ -87,6 +89,7 @@ grid_color: "rgba(255, 255, 255, 0.14)"
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
+| `yesterday_entity` | string | `sensor.real_electricity_price_hourly_prices_yesterday` | Sensor used to fill the current day's `00:00 -> 01:00` interval. |
 | `today_entity` | string | `sensor.real_electricity_price_hourly_prices_today` | Sensor whose `attributes.hourly_prices` array contains today's prices. |
 | `tomorrow_entity` | string | `sensor.real_electricity_price_hourly_prices_tomorrow` | Sensor whose `attributes.hourly_prices` array contains tomorrow's prices. |
 | `current_price_entity` | string | `sensor.real_electricity_price_current_price` | Optional sensor used for the current price in the stats row. |
@@ -119,7 +122,7 @@ grid_color: "rgba(255, 255, 255, 0.14)"
 
 ## Hourly Sensor Data Format
 
-The card expects `attributes.hourly_prices` on the today and tomorrow sensors. Each item should include a timestamp and a price:
+The card expects `attributes.hourly_prices` on the yesterday, today, and tomorrow sensors. Each item should include a timestamp and a price:
 
 ```json
 {
