@@ -1,7 +1,7 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 import { designTokens } from './shared/design-tokens';
 
-const CARD_VERSION = '0.1.14';
+const CARD_VERSION = '0.1.15';
 const DEFAULT_TODAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_today';
 const DEFAULT_TOMORROW_ENTITY = 'sensor.real_electricity_price_hourly_prices_tomorrow';
 const DEFAULT_CURRENT_PRICE_ENTITY = 'sensor.real_electricity_price_current_price';
@@ -101,6 +101,11 @@ interface PriceRange {
 interface ChartDomain {
   start: number;
   end: number;
+}
+
+interface StepPathSegment {
+  line: string;
+  area: string;
 }
 
 interface PriceDataResult {
@@ -414,10 +419,24 @@ function currentSelectionPoint(points: ChartPoint[], timestamp: number, domain: 
   };
 }
 
-function columnCenterPoint(point: ChartPoint, barSlotWidth: number): ChartPoint {
+function intervalEndTimestamp(point: PricePoint, domain: ChartDomain): number {
+  return Math.min(point.timestamp + HOUR_MS, domain.end);
+}
+
+function intervalEndX(point: PricePoint, domain: ChartDomain, box: ChartBox): number {
+  return xForTimestamp(intervalEndTimestamp(point, domain), domain, box);
+}
+
+function intervalCenterX(point: PricePoint, domain: ChartDomain, box: ChartBox): number {
+  const end = intervalEndTimestamp(point, domain);
+  return xForTimestamp(point.timestamp + ((end - point.timestamp) / 2), domain, box);
+}
+
+function intervalCenterPoint(point: ChartPoint, domain: ChartDomain, box: ChartBox): ChartPoint {
   return {
     ...point,
-    x: point.x + (barSlotWidth / 2),
+    timestamp: point.sourceTimestamp ?? point.timestamp,
+    x: intervalCenterX(point, domain, box),
     sourceTimestamp: point.sourceTimestamp ?? point.timestamp,
   };
 }
@@ -427,29 +446,42 @@ function domainTicks(domain: ChartDomain): number[] {
     .map((hours) => domain.start + (hours * HOUR_MS));
 }
 
-function smoothPath(points: ChartPoint[]): string {
-  if (!points.length) return '';
-  if (points.length === 1) return `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
-  let path = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const current = points[index];
-    const next = points[index + 1];
-    const previous = points[index - 1] || current;
-    const afterNext = points[index + 2] || next;
-    const cp1x = current.x + (next.x - previous.x) / 6;
-    const cp1y = current.y + (next.y - previous.y) / 6;
-    const cp2x = next.x - (afterNext.x - current.x) / 6;
-    const cp2y = next.y - (afterNext.y - current.y) / 6;
-    path += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${next.x.toFixed(2)} ${next.y.toFixed(2)}`;
-  }
-  return path;
-}
+function stepPathSegments(points: ChartPoint[], baseline: number, domain: ChartDomain, box: ChartBox): StepPathSegment[] {
+  const segments: StepPathSegment[] = [];
+  let line = '';
+  let areaStartX = 0;
+  let lastEndX = 0;
+  let previous: ChartPoint | undefined;
 
-function areaPath(points: ChartPoint[], baseline: number): string {
-  if (!points.length) return '';
-  const first = points[0];
-  const last = points[points.length - 1];
-  return `${smoothPath(points)} L ${last.x.toFixed(2)} ${baseline.toFixed(2)} L ${first.x.toFixed(2)} ${baseline.toFixed(2)} Z`;
+  const closeSegment = (): void => {
+    if (!line) return;
+    segments.push({
+      line,
+      area: `${line} L ${lastEndX.toFixed(2)} ${baseline.toFixed(2)} L ${areaStartX.toFixed(2)} ${baseline.toFixed(2)} Z`,
+    });
+    line = '';
+  };
+
+  points.forEach((point) => {
+    const startX = point.x;
+    const endX = intervalEndX(point, domain, box);
+    const contiguous = previous && Math.abs(point.timestamp - (previous.timestamp + HOUR_MS)) < 60_000;
+
+    if (!line || !contiguous) {
+      closeSegment();
+      areaStartX = startX;
+      line = `M ${startX.toFixed(2)} ${point.y.toFixed(2)}`;
+    } else {
+      line += ` L ${startX.toFixed(2)} ${point.y.toFixed(2)}`;
+    }
+
+    line += ` L ${endX.toFixed(2)} ${point.y.toFixed(2)}`;
+    lastEndX = endX;
+    previous = point;
+  });
+
+  closeSegment();
+  return segments;
 }
 
 function average(points: PricePoint[]): number | undefined {
@@ -587,12 +619,11 @@ class RealElectricityPriceCard extends LitElement {
     const chartRawPoints = priceData.points;
     const range = valueRange(chartRawPoints, config);
     const points = buildChartPoints(chartRawPoints, box, range, domain);
-    const barSlotWidth = (box.width - box.left - box.right) / CHART_HOURS;
     const now = Date.now();
     const hasManualSelection = this._selectedIndex !== undefined;
     const selectedIndex = Math.max(0, Math.min(points.length - 1, hasManualSelection ? this._selectedIndex ?? 0 : pointIndexAtTimestamp(points, now)));
     const selected = hasManualSelection
-      ? type === 'bar' ? columnCenterPoint(points[selectedIndex], barSlotWidth) : points[selectedIndex]
+      ? intervalCenterPoint(points[selectedIndex], domain, box)
       : currentSelectionPoint(points, now, domain, box);
     const minPoint = points.reduce((best, point) => point.value < best.value ? point : best, points[0]);
     const maxPoint = points.reduce((best, point) => point.value > best.value ? point : best, points[0]);
@@ -692,11 +723,20 @@ class RealElectricityPriceCard extends LitElement {
     const ticks = domainTicks(domain);
     const currentX = xForTimestamp(Date.now(), domain, box);
     const showCurrent = config.show_current_marker !== false && currentX >= box.left && currentX <= box.width - box.right;
-    const minLabelX = type === 'bar' ? minPoint.x + (barSlotWidth / 2) : minPoint.x;
-    const maxLabelX = type === 'bar' ? maxPoint.x + (barSlotWidth / 2) : maxPoint.x;
+    const minLabelX = intervalCenterX(minPoint, domain, box);
+    const maxLabelX = intervalCenterX(maxPoint, domain, box);
     const gradientId = 'rep-line-fill';
     const lineGradientId = 'rep-line-color';
     const gradientSpan = Math.max(1, box.width - box.left - box.right);
+    const lineColorStops = points.flatMap((point) => {
+      const color = resolvePointColor(point, config, cheapThreshold, now);
+      const startOffset = Math.max(0, Math.min(100, ((point.x - box.left) / gradientSpan) * 100));
+      const endOffset = Math.max(0, Math.min(100, ((intervalEndX(point, domain, box) - box.left) / gradientSpan) * 100));
+      return [
+        svg`<stop offset=${`${startOffset}%`} stop-color=${color}></stop>`,
+        svg`<stop offset=${`${endOffset}%`} stop-color=${color}></stop>`,
+      ];
+    });
 
     return html`
       <svg
@@ -717,14 +757,12 @@ class RealElectricityPriceCard extends LitElement {
             <stop offset="100%" stop-color="rgba(56, 199, 243, 0.04)"></stop>
           </linearGradient>
           <linearGradient id=${lineGradientId} x1=${box.left} x2=${box.width - box.right} y1="0" y2="0" gradientUnits="userSpaceOnUse">
-            ${points.map((point) => svg`
-              <stop offset=${`${Math.max(0, Math.min(100, ((point.x - box.left) / gradientSpan) * 100))}%`} stop-color=${resolvePointColor(point, config, cheapThreshold, now)}></stop>
-            `)}
+            ${lineColorStops}
           </linearGradient>
         </defs>
         ${this._renderGrid(config, box, range, ticks, domain)}
         ${type === 'line'
-          ? this._renderLineChart(points, baseline, gradientId, lineGradientId, config)
+          ? this._renderLineChart(points, baseline, gradientId, lineGradientId, domain, box)
           : this._renderBarChart(points, zeroY, barWidth, barSlotWidth, selected, config, cheapThreshold, now)}
         ${showCurrent ? svg`<line class="price-current-line" x1=${currentX} x2=${currentX} y1=${box.top} y2=${baseline}></line>` : nothing}
         ${config.show_extremes === false ? nothing : svg`
@@ -805,13 +843,19 @@ class RealElectricityPriceCard extends LitElement {
     });
   }
 
-  private _renderLineChart(points: ChartPoint[], baseline: number, fillGradientId: string, lineGradientId: string, config: RealElectricityPriceCardConfig): TemplateResult {
-    const path = smoothPath(points);
-    const fillPath = areaPath(points, baseline);
+  private _renderLineChart(
+    points: ChartPoint[],
+    baseline: number,
+    fillGradientId: string,
+    lineGradientId: string,
+    domain: ChartDomain,
+    box: ChartBox,
+  ): TemplateResult {
+    const segments = stepPathSegments(points, baseline, domain, box);
     return svg`
-      <path class="price-line-area" d=${fillPath} fill=${`url(#${fillGradientId})`}></path>
-      <path class="price-line-shadow" d=${path}></path>
-      <path class="price-line" d=${path} stroke=${`url(#${lineGradientId})`}></path>
+      ${segments.map((segment) => svg`<path class="price-line-area" d=${segment.area} fill=${`url(#${fillGradientId})`}></path>`)}
+      ${segments.map((segment) => svg`<path class="price-line-shadow" d=${segment.line}></path>`)}
+      ${segments.map((segment) => svg`<path class="price-line" d=${segment.line} stroke=${`url(#${lineGradientId})`}></path>`)}
     `;
   }
 
@@ -1187,7 +1231,7 @@ class RealElectricityPriceCardEditor extends LitElement {
           <span>Chart Type</span>
           <select .value=${chartType(config)} @change=${(ev: Event) => this._setValue('chart_type', (ev.target as HTMLSelectElement).value)}>
             <option value="bar">Bars</option>
-            <option value="line">Line</option>
+            <option value="line">Step line</option>
           </select>
         </label>
         <label>

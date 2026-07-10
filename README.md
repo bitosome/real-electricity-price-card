@@ -10,7 +10,7 @@ The card renders a fixed 48-hour electricity price chart from the integration's 
 - Fixed 48-hour chart window from the current Home Assistant timezone day start.
 - Missing tomorrow prices remain empty future space, so it is clear when next-day data has not arrived yet.
 - Normalizes the integration's `01:00..00:00` hourly sequence into calendar `00:00..23:00` chart slots.
-- Bar or line chart rendering.
+- Bar or step-line chart rendering.
 - Interactive selector for hour-by-hour price inspection, with hover or click/tap modes.
 - Live current-time marker uses the exact current minute while selection snaps by hourly price interval.
 - Optional title. Leave `name` empty or omit it to hide the title.
@@ -93,7 +93,7 @@ grid_color: "rgba(255, 255, 255, 0.14)"
 | `cheap_price_entity` | string | `number.real_electricity_price_acceptable_price` | Entity used as the cheap-hour threshold when `cheap_threshold` is not set. |
 | `cheap_threshold` | number | entity value | Fixed cheap-hour threshold. Overrides `cheap_price_entity` when set. |
 | `name` | string | empty | Optional card title. If omitted or blank, no title is rendered. |
-| `chart_type` | `bar` or `line` | `bar` | Chart rendering mode. |
+| `chart_type` | `bar` or `line` | `bar` | Chart rendering mode. `line` renders hourly prices as a step line, without interpolating between hours. |
 | `selector_mode` | `hover` or `click` | `hover` | `hover` updates while moving over the graph on desktop and still supports touch drag. `click` updates on click/tap and drag. |
 | `height` | number | `190` | SVG graph height in pixels. |
 | `horizontal_lines` | number | `5` | Number of horizontal grid lines and right-side axis labels. |
