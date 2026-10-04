@@ -1,7 +1,7 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 import { designTokens } from './shared/design-tokens';
 
-const CARD_VERSION = '0.1.16';
+const CARD_VERSION = '0.1.17';
 const DEFAULT_YESTERDAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_yesterday';
 const DEFAULT_TODAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_today';
 const DEFAULT_TOMORROW_ENTITY = 'sensor.real_electricity_price_hourly_prices_tomorrow';
@@ -943,30 +943,29 @@ class RealElectricityPriceCard extends LitElement {
     }
 
     .price-selected {
-      flex: 0 0 auto;
+      flex: 0 1 auto;
       display: inline-flex;
-      align-items: center;
-      justify-content: end;
-      gap: 5px;
-      max-width: min(58%, 172px);
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: flex-end;
+      gap: 4px 8px;
+      max-width: 100%;
       min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
       color: var(--secondary-text-color);
       font-size: 9px;
-      line-height: 1;
+      line-height: 1.3;
       font-weight: 750;
+      text-align: right;
     }
 
     .price-selected span {
       min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      max-width: 100%;
+      overflow-wrap: anywhere;
     }
 
     .price-selected strong {
+      flex-shrink: 0;
       color: var(--primary-text-color);
       font-size: 14px;
       line-height: 1;

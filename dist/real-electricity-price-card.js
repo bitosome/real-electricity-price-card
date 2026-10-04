@@ -184,30 +184,29 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
     }
 
     .price-selected {
-      flex: 0 0 auto;
+      flex: 0 1 auto;
       display: inline-flex;
-      align-items: center;
-      justify-content: end;
-      gap: 5px;
-      max-width: min(58%, 172px);
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: flex-end;
+      gap: 4px 8px;
+      max-width: 100%;
       min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
       color: var(--secondary-text-color);
       font-size: 9px;
-      line-height: 1;
+      line-height: 1.3;
       font-weight: 750;
+      text-align: right;
     }
 
     .price-selected span {
       min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      max-width: 100%;
+      overflow-wrap: anywhere;
     }
 
     .price-selected strong {
+      flex-shrink: 0;
       color: var(--primary-text-color);
       font-size: 14px;
       line-height: 1;
@@ -596,4 +595,4 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
     .checkbox input {
       width: auto;
     }
-  `,customElements.get("real-electricity-price-card")||customElements.define("real-electricity-price-card",qt),customElements.get("real-electricity-price-card-editor")||customElements.define("real-electricity-price-card-editor",Gt),window.customCards=window.customCards||[],window.customCards.push({type:"real-electricity-price-card",name:"Real Electricity Price Card",description:"Interactive electricity price chart for real-electricity-price",preview:!1,version:"0.1.16"});
+  `,customElements.get("real-electricity-price-card")||customElements.define("real-electricity-price-card",qt),customElements.get("real-electricity-price-card-editor")||customElements.define("real-electricity-price-card-editor",Gt),window.customCards=window.customCards||[],window.customCards.push({type:"real-electricity-price-card",name:"Real Electricity Price Card",description:"Interactive electricity price chart for real-electricity-price",preview:!1,version:"0.1.17"});
