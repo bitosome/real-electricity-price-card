@@ -136,28 +136,10 @@ The card expects `attributes.hourly_prices` on the yesterday, today, and tomorro
 
 The card reads `actual_price` first, then falls back to `price`, `y`, or `nord_pool_price`.
 
-## Design System & UI Implementation
+## Shared UI library and accessible chart
 
-This card is part of the `bitosome` Home Assistant card family and follows a shared design system. The **single source of truth** is [`space-hub-card`](https://github.com/bitosome/space-hub-card) — specifically `space-hub-card/src/shared/design-tokens.ts`. See its [Design System & UI Implementation](https://github.com/bitosome/space-hub-card#design-system--ui-implementation) section for the full approach and file map.
+Version 0.1.19 bundles the pinned [`@bitosome/ha-card-ui`](https://github.com/bitosome/ha-card-ui) 1.0.0 package. Space Hub remains the visual reference. Shared tokens, typography, theme surfaces and native HA more-info behavior come from the library; `src/shared` import paths are compatibility re-exports, not vendored copies.
 
-- The design tokens are **vendored** into this repo at `src/shared/design-tokens.ts` and carry an `AUTO-SYNCED … DO NOT EDIT` banner. Update tokens in `space-hub-card` and run its `scripts/sync-design-tokens.sh` — never edit the vendored copy directly.
-- Compose the tokens into the card's Lit styles: `static styles = [designTokens, css\`…\`]`.
+The chart remains directly interactive: arrow keys, Home/End and Page Up/Down select intervals; touch preserves vertical scrolling and horizontal scrubbing. Selected time, sign and unit stay visible, missing readings remain gaps, and negative prices remain negative. A chart does not need an extra modal merely to match device cards.
 
-Rules when implementing or changing UI (these mirror `space-hub-card`, so every card looks and behaves the same):
-
-1. **Never hardcode** colors, spacing, radii, or shadows. Reference the CSS custom properties instead — e.g. `var(--tile-border-radius)`, `var(--tile-shadow-default)`, `var(--large-gap)`, `var(--status-active-color)`.
-2. **Reuse Home Assistant primitives** (`ha-card`, `ha-icon`, and `ha-control-button` where applicable) rather than reimplementing them.
-3. **Selection/glow layers render below surfaces**: a glow/selection layer uses `z-index: 0`, the tile/panel surface uses `z-index: 1`, and the group container is a **single stacking context** so a glow never paints over a neighbouring tile. Individual tile wrappers must not create their own stacking context.
-4. **Use the semantic status palette** (`--status-*`) for state colors.
-
-## Shared design and accessible chart
-
-Version 0.1.18 vendors the Space Hub presentation foundation with recorded source
-hashes in `src/shared/DESIGN_PROVENANCE.json`. The compact chart header and
-statistics follow the common type, surface and spacing rules. Time, sign and
-units remain visible; missing quotes remain gaps. Focus the chart to select
-intervals with arrow keys, Home/End or Page Up/Down. Touch allows vertical page
-scrolling while horizontal scrubbing remains available.
-
-Run `npm run check` for typecheck, build and interaction regressions. Tagged
-releases publish the verified dashboard bundle through GitHub Actions.
+Run `npm run check` for typecheck, build and interaction regressions. Tagged releases publish the self-contained dashboard bundle. Shared library updates require an explicit dependency/lockfile update, rebuild and card release; no extra HACS resource is required.
