@@ -149,3 +149,15 @@ Rules when implementing or changing UI (these mirror `space-hub-card`, so every 
 2. **Reuse Home Assistant primitives** (`ha-card`, `ha-icon`, and `ha-control-button` where applicable) rather than reimplementing them.
 3. **Selection/glow layers render below surfaces**: a glow/selection layer uses `z-index: 0`, the tile/panel surface uses `z-index: 1`, and the group container is a **single stacking context** so a glow never paints over a neighbouring tile. Individual tile wrappers must not create their own stacking context.
 4. **Use the semantic status palette** (`--status-*`) for state colors.
+
+## Shared design and accessible chart
+
+Version 0.1.18 vendors the Space Hub presentation foundation with recorded source
+hashes in `src/shared/DESIGN_PROVENANCE.json`. The compact chart header and
+statistics follow the common type, surface and spacing rules. Time, sign and
+units remain visible; missing quotes remain gaps. Focus the chart to select
+intervals with arrow keys, Home/End or Page Up/Down. Touch allows vertical page
+scrolling while horizontal scrubbing remains available.
+
+Run `npm run check` for typecheck, build and interaction regressions. Tagged
+releases publish the verified dashboard bundle through GitHub Actions.

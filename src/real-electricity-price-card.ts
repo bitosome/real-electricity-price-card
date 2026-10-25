@@ -1,7 +1,8 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 import { designTokens } from './shared/design-tokens';
+import { familyStyles } from './shared/card-primitives';
 
-const CARD_VERSION = '0.1.17';
+const CARD_VERSION = '0.1.18';
 const DEFAULT_YESTERDAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_yesterday';
 const DEFAULT_TODAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_today';
 const DEFAULT_TOMORROW_ENTITY = 'sensor.real_electricity_price_hourly_prices_tomorrow';
@@ -532,8 +533,8 @@ function normalizeConfig(config: RealElectricityPriceCardConfig): RealElectricit
     show_stats: true,
     fill_color: 'rgba(56, 199, 243, 0.18)',
     marker_color: '#38c7f3',
-    grid_color: 'rgba(255, 255, 255, 0.14)',
-    chart_background: 'rgba(33, 52, 62, 0.88)',
+    grid_color: 'var(--divider-color, rgba(127, 127, 127, 0.25))',
+    chart_background: 'color-mix(in srgb, var(--card-background-color, #303446) 94%, var(--primary-color, #c39ce3))',
     card_background: 'var(--ha-card-background, var(--card-background-color, #1f1f1f))',
     ...config,
   };
@@ -736,8 +737,14 @@ class RealElectricityPriceCard extends LitElement {
         class="price-chart"
         viewBox=${`0 0 ${box.width} ${box.height}`}
         preserveAspectRatio="none"
-        role="img"
-        aria-label="Electricity price chart"
+        role="slider"
+        tabindex="0"
+        aria-label="Electricity price interval"
+        aria-valuemin="0"
+        aria-valuemax=${points.length - 1}
+        aria-valuenow=${pointIndexAtTimestamp(points, selected.timestamp)}
+        aria-valuetext=${`${formatDateTime(this.hass, selected.timestamp)} ${formatPrice(selected.value, config)}`}
+        @keydown=${(ev: KeyboardEvent) => this._selectKeyboard(ev, points, selected.timestamp)}
         @pointerdown=${(ev: PointerEvent) => this._selectPoint(ev, points, box, selector, domain)}
         @pointermove=${(ev: PointerEvent) => this._selectPoint(ev, points, box, selector, domain)}
         @pointerup=${this._stopPointer}
@@ -852,6 +859,22 @@ class RealElectricityPriceCard extends LitElement {
     `;
   }
 
+  private _selectKeyboard(ev: KeyboardEvent, points: ChartPoint[], timestamp: number): void {
+    const current = pointIndexAtTimestamp(points, timestamp);
+    let next = current;
+    switch (ev.key) {
+      case 'ArrowLeft': case 'ArrowDown': next -= 1; break;
+      case 'ArrowRight': case 'ArrowUp': next += 1; break;
+      case 'PageDown': next -= 6; break;
+      case 'PageUp': next += 6; break;
+      case 'Home': next = 0; break;
+      case 'End': next = points.length - 1; break;
+      default: return;
+    }
+    ev.preventDefault();
+    this._selectedIndex = Math.max(0, Math.min(points.length - 1, next));
+  }
+
   private _selectPoint(ev: PointerEvent, points: ChartPoint[], box: ChartBox, selector: SelectorMode, domain: ChartDomain): void {
     const hoverMove = selector === 'hover' && ev.type === 'pointermove' && ev.pointerType !== 'touch';
     if (ev.type === 'pointermove' && !hoverMove && !this._dragging) return;
@@ -863,7 +886,7 @@ class RealElectricityPriceCard extends LitElement {
         // Pointer capture can fail inside some embedded webviews.
       }
     }
-    ev.preventDefault();
+    if (ev.pointerType !== 'touch') ev.preventDefault();
     const rect = (ev.currentTarget as SVGElement).getBoundingClientRect();
     const x = ((ev.clientX - rect.left) / Math.max(1, rect.width)) * box.width;
     const timestamp = timestampForX(x, domain, box);
@@ -884,7 +907,7 @@ class RealElectricityPriceCard extends LitElement {
     fireEvent(this, 'hass-more-info', { entityId });
   }
 
-  static styles = [designTokens, css`
+  static styles = [designTokens, familyStyles, css`
     :host {
       display: block;
       color: var(--primary-text-color);
@@ -893,13 +916,13 @@ class RealElectricityPriceCard extends LitElement {
 
     ha-card.price-card {
       overflow: hidden;
-      border-radius: var(--ha-card-border-radius, 12px);
+      border-radius: var(--family-radius);
       background: var(--rep-card-bg);
       box-shadow: var(--ha-card-box-shadow, none);
     }
 
     .price-content {
-      padding: 16px;
+      padding: var(--tile-padding-large);
       border-radius: inherit;
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(0, 0, 0, 0.08));
       box-sizing: border-box;
@@ -925,8 +948,9 @@ class RealElectricityPriceCard extends LitElement {
       background: transparent;
       color: var(--primary-text-color);
       font: inherit;
-      font-size: 22px;
-      font-weight: 800;
+      font-size: 18px;
+      font-weight: 700;
+      min-height: 44px;
       line-height: 1.18;
       text-align: left;
       cursor: pointer;
@@ -952,9 +976,9 @@ class RealElectricityPriceCard extends LitElement {
       max-width: 100%;
       min-width: 0;
       color: var(--secondary-text-color);
-      font-size: 9px;
-      line-height: 1.3;
-      font-weight: 750;
+      font-size: 12px;
+      line-height: 1.4;
+      font-weight: 500;
       text-align: right;
     }
 
@@ -969,7 +993,7 @@ class RealElectricityPriceCard extends LitElement {
       color: var(--primary-text-color);
       font-size: 14px;
       line-height: 1;
-      font-weight: 850;
+      font-weight: 600;
       letter-spacing: 0;
       white-space: nowrap;
     }
@@ -985,22 +1009,21 @@ class RealElectricityPriceCard extends LitElement {
       min-width: 0;
       padding: 8px 10px;
       border-radius: var(--tile-border-radius);
-      background: rgba(0, 0, 0, 0.12);
+      background: var(--family-tile);
       box-sizing: border-box;
     }
 
     .price-stat span,
     .price-stat strong {
       display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      overflow-wrap: anywhere;
+      white-space: normal;
     }
 
     .price-stat span {
       color: var(--secondary-text-color);
       font-size: 11px;
-      font-weight: 800;
+      font-weight: 500;
       line-height: 1.1;
     }
 
@@ -1008,7 +1031,7 @@ class RealElectricityPriceCard extends LitElement {
       margin-top: 3px;
       color: var(--primary-text-color);
       font-size: 13px;
-      font-weight: 850;
+      font-weight: 600;
       line-height: 1.1;
     }
 
@@ -1047,7 +1070,7 @@ class RealElectricityPriceCard extends LitElement {
       height: auto;
       min-width: 0;
       cursor: pointer;
-      touch-action: none;
+      touch-action: pan-y;
       user-select: none;
       -webkit-user-select: none;
     }
@@ -1144,7 +1167,7 @@ class RealElectricityPriceCard extends LitElement {
     .price-extreme {
       fill: var(--primary-text-color);
       font-size: 11px;
-      font-weight: 850;
+      font-weight: 600;
     }
 
     .price-selected-dot {
@@ -1173,7 +1196,11 @@ class RealElectricityPriceCard extends LitElement {
       box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
     }
 
-    @media (max-width: 480px) {
+    .price-card { container-type:inline-size; }
+    .price-chart:focus-visible { outline:3px solid var(--primary-color);outline-offset:-3px;border-radius:8px; }
+    .price-stat strong { font-variant-numeric:tabular-nums;line-height:1.4; }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important;transition:none!important; } }
+    @container (max-width: 480px) {
       .price-content {
         padding: var(--tile-padding-large);
       }
@@ -1262,8 +1289,8 @@ class RealElectricityPriceCardEditor extends LitElement {
           ${this._colorField('Marker', 'marker_color', config.marker_color || '#38c7f3')}
         </div>
         ${this._textField('Area Fill Color', 'fill_color', config.fill_color || 'rgba(56, 199, 243, 0.18)')}
-        ${this._textField('Grid Color', 'grid_color', config.grid_color || 'rgba(255, 255, 255, 0.14)')}
-        ${this._textField('Chart Background', 'chart_background', config.chart_background || 'rgba(33, 52, 62, 0.88)')}
+        ${this._textField('Grid Color', 'grid_color', config.grid_color || 'var(--divider-color, rgba(127, 127, 127, 0.25))')}
+        ${this._textField('Chart Background', 'chart_background', config.chart_background || 'color-mix(in srgb, var(--card-background-color, #303446) 94%, var(--primary-color, #c39ce3))')}
       </div>
     `;
   }
