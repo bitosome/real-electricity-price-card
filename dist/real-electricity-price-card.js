@@ -518,6 +518,8 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
     outline-offset: 3px;
   }
   .family-notice {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -1152,4 +1154,4 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
     .checkbox input {
       width: auto;
     }
-  `,customElements.get("real-electricity-price-card")||customElements.define("real-electricity-price-card",Gt),customElements.get("real-electricity-price-card-editor")||customElements.define("real-electricity-price-card-editor",Zt),window.customCards=window.customCards||[],window.customCards.push({type:"real-electricity-price-card",name:"Real Electricity Price Card",description:"Interactive electricity price chart for real-electricity-price",preview:!1,version:"0.1.20"});
+  `,customElements.get("real-electricity-price-card")||customElements.define("real-electricity-price-card",Gt),customElements.get("real-electricity-price-card-editor")||customElements.define("real-electricity-price-card-editor",Zt),window.customCards=window.customCards||[],window.customCards.push({type:"real-electricity-price-card",name:"Real Electricity Price Card",description:"Interactive electricity price chart for real-electricity-price",preview:!1,version:"0.1.21"});

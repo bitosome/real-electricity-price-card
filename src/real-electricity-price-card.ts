@@ -2,7 +2,7 @@ import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 import { designTokens } from './shared/design-tokens';
 import { familyStyles, showEntityMoreInfo, UI_ICONS } from '@bitosome/ha-card-ui';
 
-const CARD_VERSION = '0.1.20';
+const CARD_VERSION = '0.1.21';
 const DEFAULT_YESTERDAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_yesterday';
 const DEFAULT_TODAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_today';
 const DEFAULT_TOMORROW_ENTITY = 'sensor.real_electricity_price_hourly_prices_tomorrow';
