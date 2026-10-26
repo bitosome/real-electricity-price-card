@@ -143,3 +143,5 @@ Version 0.1.19 bundles the pinned [`@bitosome/ha-card-ui`](https://github.com/bi
 The chart remains directly interactive: arrow keys, Home/End and Page Up/Down select intervals; touch preserves vertical scrolling and horizontal scrubbing. Selected time, sign and unit stay visible, missing readings remain gaps, and negative prices remain negative. A chart does not need an extra modal merely to match device cards.
 
 Run `npm run check` for typecheck, build and interaction regressions. Tagged releases publish the self-contained dashboard bundle. Shared library updates require an explicit dependency/lockfile update, rebuild and card release; no extra HACS resource is required.
+
+The optional card title includes the common information icon and opens native Home Assistant entity details. It is a labeled dialog launcher with a 44px minimum target; long titles wrap without losing the details affordance. Price-chart configuration stays in Home Assistant’s native card editor.

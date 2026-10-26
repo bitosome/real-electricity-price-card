@@ -21,7 +21,7 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
  * SPDX-License-Identifier: BSD-3-Clause
  */class ct extends ${constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){const t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){const e=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=((t,e,i)=>{const r=i?.renderBefore??e;let o=r._$litPart$;if(void 0===o){const t=i?.renderBefore??null;r._$litPart$=o=new et(e.insertBefore(N(),t),t,void 0,i??{})}return o._$AI(t),o})(e,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return q}}ct._$litElement$=!0,ct.finalized=!0,lt.litElementHydrateSupport?.({LitElement:ct});const pt=lt.litElementPolyfillSupport;pt?.({LitElement:ct}),(lt.litElementVersions??=[]).push("4.2.2");const dt=n`
   ${a("\n  :host {\n    display: block;\n    /* Chip styling variables */\n    --chip-padding: 2px 2px;\n    --chip-text-font-weight: 700;\n    --chip-text-font-size: var(--chip-font-size, 12px);\n    --chip-background-color: rgba(0,0,0,0.06);\n    --chip-border-radius: var(--ha-badge-border-radius, 999px);\n    --chip-gap: 6px;\n    --main-light-on-bg: linear-gradient(135deg,#ffcf57,#ffb200);\n    --main-light-off-bg: rgba(0,0,0,0.06);\n    --main-light-icon-on-color: #ffffff;\n    --main-light-icon-off-color: var(--secondary-text-color);\n    --switch-on-color: var(--switch-on-yellow, #ffc107);\n    --switch-smart-on-color: var(--switch-on-green, #00c853);\n    --switch-lock-unlocked-color: var(--switch-unlocked-red, #e53935);\n    --lock-spinner-color: var(--primary-text-color, #ffffff);\n    --switch-chip-bg: var(--chip-background-color, rgba(0,0,0,0.06));\n    --switch-icon-size: 28px;\n    --ac-chip-bg-off: rgba(158,158,158,0.95);\n    --ac-chip-bg-cool: #00aaff;\n    --ac-chip-bg-heat: #ff7043;\n    --ac-chip-bg-dry: #ffca28;\n    --ac-chip-bg-fan: #66bb6a;\n    --ac-chip-bg-auto: #26c6da;\n    --ac-chip-bg-default: rgba(0,0,0,0.06);\n    --ac-chip-icon-color: #ffffff;\n    --ac-chip-icon-off-color: #ffffff;\n    --ac-fan-color-off: gray;\n    --ac-fan-color-cool: #00aaff;\n    --ac-fan-color-heat: #ff7043;\n    --ac-fan-color-dry: #ffca28;\n    --ac-fan-color-fan: #66bb6a;\n    --ac-fan-color-auto: #26c6da;\n    --ac-fan-color-default: var(--paper-item-icon-color);\n    --thermostat-heating-color: #ff7043;\n    --thermostat-idle-color: #66bb6a;\n    --thermostat-off-color: gray;\n    --thermostat-pill-heating-bg: var(--state-climate-heat-color, #ff7043);\n    --thermostat-pill-heating-fg: var(--primary-background-color, #fff);\n    --thermostat-pill-idle-bg: var(--chip-background-color, rgba(0,0,0,0.06));\n    --thermostat-pill-idle-fg: var(--secondary-text-color);\n\n    /* Shared semantic status palette (single source of truth across cards) */\n    --status-on-color: #ffc107;\n    --status-active-color: #42a5f5;\n    --status-success-color: #66bb6a;\n    --status-alert-color: #e53935;\n    --status-warn-color: #ff9800;\n    --status-cool-color: #00aaff;\n    --status-heat-color: #ff7043;\n    --status-dry-color: #ffca28;\n    --status-fan-color: #66bb6a;\n    --status-auto-color: #26c6da;\n    --status-smartplug-on-color: #ff9800;\n    --status-presence-color: #42a5f5;\n    --status-icon-on-color: #ffffff;\n\n    /* Positioning variables */\n    --tile-padding: 8px;\n    --tile-padding-large: 12px;\n    --chip-z-index: 3;\n    --tile-z-index: 2;\n    --glow-z-index: 1;\n\n    /* Tile shape control */\n    --tile-border-radius: var(--ha-card-border-radius, 12px);\n\n    /* Common gaps and spacing */\n    --small-gap: 2px;\n    --medium-gap: 6px;\n    --large-gap: 12px;\n\n    /* Shadow variables */\n    --tile-shadow-default: 0 6px 18px rgba(0,0,0,0.10);\n    --tile-shadow-hover: 0 12px 24px rgba(0,0,0,0.16);\n    --tile-shadow-active: 0 18px 40px var(--pulse-strong, rgba(0,0,0,0.18)), 0 6px 18px var(--pulse-weak, rgba(0,0,0,0.10));\n  }\n")}
-`,ht=n`
+`,ht="mdi:information-outline",mt=n`
   :host {
     --family-gap: 12px;
     --family-grid-gap: 8px;
@@ -559,13 +559,14 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
   .family-dialog [hidden] {
     display: none !important;
   }
-`;const mt="sensor.real_electricity_price_hourly_prices_yesterday",ut="sensor.real_electricity_price_hourly_prices_today",ft="sensor.real_electricity_price_hourly_prices_tomorrow",gt="sensor.real_electricity_price_current_price",yt="number.real_electricity_price_acceptable_price",xt="€/kWh",bt=36e5,vt=48;function _t(t,e,i){const r=Number(t);if(Number.isFinite(r))return Math.max(e,Math.min(i,r))}function $t(t){if("number"==typeof t&&Number.isFinite(t))return t;if("string"==typeof t){const e=Number(t);if(Number.isFinite(e))return e;const i=new Date(t).getTime();if(Number.isFinite(i))return i}}function wt(...t){for(const e of t){if(null==e||""===e)continue;const t=Number(e);if(Number.isFinite(t))return t}}function At(t){const e=t?.attributes?.hourly_prices;return Array.isArray(e)?e.reduce((t,e)=>{const i=e,r=Array.isArray(i)?$t(i[0]):$t(i.start_time)??$t(i.x),o=Array.isArray(i)?wt(i[1]):wt(i.actual_price,i.price,i.y,i.nord_pool_price);return void 0===r||void 0===o||t.push({timestamp:r,value:o,sourceTimestamp:r}),t},[]).sort((t,e)=>t.timestamp-e.timestamp):[]}function kt(t){return"line"===(t.chart_type||t.graph_type)?"line":"bar"}function Et(t){return"click"===t.selector_mode?"click":"hover"}function Ct(t){return _t(t.height,120,360)||190}function St(t){return Math.round(_t(t.horizontal_lines,2,9)||5)}function Mt(t){return Math.round(_t(t.price_decimals,0,6)??4)}function zt(t){return Math.round(_t(t.axis_decimals,0,4)??2)}function Pt(t,e,i=Mt(e)){return void 0!==t&&Number.isFinite(t)?`${t.toFixed(i)} ${e.unit||xt}`:"—"}function Nt(t){const e={hour:"2-digit",minute:"2-digit"},i=String(t?.locale?.time_format||"").toLowerCase();return"12"===i&&(e.hour12=!0),"24"===i&&(e.hour12=!1),e}function Tt(t){const e=t?.config?.time_zone;return"string"==typeof e&&e.trim()?e.trim():void 0}function Ft(t,e,i){const r=Tt(t),o=new Date(e);try{return new Intl.DateTimeFormat(t?.locale?.language,r?{...i,timeZone:r}:i).format(o)}catch{return new Intl.DateTimeFormat(t?.locale?.language,i).format(o)}}function Ut(t,e){return`${function(t,e){return Ft(t,e,{day:"numeric",month:"long"})}(t,e)} ${function(t,e){return Ft(t,e,{...Nt(t)})}(t,e)}`}function Ht(t,e,i){return new Intl.DateTimeFormat("en-US",{...i,timeZone:e}).formatToParts(new Date(t)).reduce((t,e)=>("literal"!==e.type&&(t[e.type]=e.value),t),{})}function Ot(t,e){const i=Ht(t,e,{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}),r=Number(i.year),o=Number(i.month),a=Number(i.day),n=Number(i.hour),s=Number(i.minute),l=Number(i.second);return[r,o,a,n,s,l].every(Number.isFinite)?Date.UTC(r,o-1,a,n,s,l)-t:0}function Rt(t){const e=new Date;e.setHours(0,0,0,0);const i=function(t){const e=Tt(t);if(e)try{const t=Ht(Date.now(),e,{year:"numeric",month:"2-digit",day:"2-digit"}),i=Number(t.year),r=Number(t.month),o=Number(t.day);if(![i,r,o].every(Number.isFinite))return;const a=Date.UTC(i,r-1,o,0,0,0,0),n=Ot(a,e);return a-Ot(a-n,e)}catch{return}}(t)??e.getTime();return{start:i,end:i+vt*bt}}function Dt(t,e,i){const r=i.width-i.left-i.right,o=Math.max(1,e.end-e.start);return i.left+(t-e.start)/o*r}function It(t,e){if(!t.length)return 0;if(e<=t[0].timestamp)return 0;let i=0;for(let r=1;r<t.length&&!(t[r].timestamp>e);r+=1)i=r;return i}function Lt(t,e){return Math.min(t.timestamp+bt,e.end)}function jt(t,e,i){return Dt(Lt(t,e),e,i)}function Bt(t,e,i){const r=Lt(t,e);return Dt(t.timestamp+(r-t.timestamp)/2,e,i)}function Vt(t,e,i,r){const o=t.sourceTimestamp??t.timestamp,a=r>=o&&r<o+bt,n=o+bt<=r,s=void 0!==i&&t.value<=i;return a&&s?e.cheap_current_color||"#22c55e":a?e.current_hour_color||"#3b82f6":n&&s?e.cheap_past_color||"#bbf7d0":n?e.past_color||"#bfdbfe":s?e.cheap_color||"#86efac":e.future_color||"#93c5fd"}function Wt(t){return{yesterday_entity:mt,today_entity:ut,tomorrow_entity:ft,current_price_entity:gt,cheap_price_entity:yt,chart_type:"bar",selector_mode:"hover",height:190,horizontal_lines:5,price_decimals:4,axis_decimals:2,unit:xt,show_current_marker:!0,show_extremes:!0,show_stats:!0,fill_color:"rgba(56, 199, 243, 0.18)",marker_color:"#38c7f3",grid_color:"var(--divider-color, rgba(127, 127, 127, 0.25))",chart_background:"color-mix(in srgb, var(--card-background-color, #303446) 94%, var(--primary-color, #c39ce3))",card_background:"var(--ha-card-background, var(--card-background-color, #1f1f1f))",...t}}class qt extends ct{constructor(){super(...arguments),this._dragging=!1,this._stopPointer=t=>{this._dragging=!1;try{t.currentTarget.releasePointerCapture(t.pointerId)}catch{}}}static async getConfigElement(){return await customElements.whenDefined("real-electricity-price-card-editor"),document.createElement("real-electricity-price-card-editor")}static getStubConfig(){return{type:"custom:real-electricity-price-card",yesterday_entity:mt,today_entity:ut,tomorrow_entity:ft,current_price_entity:gt,chart_type:"bar"}}setConfig(t){this._config=Wt(t||{})}connectedCallback(){super.connectedCallback(),this._clockTimer=window.setInterval(()=>this.requestUpdate(),3e4)}disconnectedCallback(){void 0!==this._clockTimer&&(window.clearInterval(this._clockTimer),this._clockTimer=void 0),super.disconnectedCallback()}getCardSize(){const t=Ct(this._config||{});return Math.max(3,Math.ceil((t+150)/50))}render(){if(!this._config)return V``;const t=Wt(this._config),e=Rt(this.hass),i=function(t,e,i){const r=e.yesterday_entity||mt,o=e.today_entity||ut,a=e.tomorrow_entity||ft,n=t?.states[r],s=t?.states[o],l=t?.states[a],c=[...At(n),...At(s),...At(l)].reduce((t,e)=>(e.timestamp>=i.start&&e.timestamp<i.end&&t.set(e.timestamp,e),t),new Map),p=[s?void 0:o,l?void 0:a].filter(t=>Boolean(t));return{points:[...c.values()].sort((t,e)=>t.timestamp-e.timestamp),moreInfoEntityId:s?o:l?a:void 0,missingEntityIds:p}}(this.hass,t,e);if(!i.points.length){const t=i.missingEntityIds.length?` Missing: ${i.missingEntityIds.join(", ")}`:"";return this._renderError(`No hourly_prices found.${t}`)}const r=kt(t),o=Et(t),a="string"==typeof t.name?t.name.trim():"",n={width:360,height:Ct(t),left:8,right:34,top:15,bottom:24},s=i.points,l=function(t,e){const i=t.map(t=>t.value),r=Math.min(...i),o=Math.max(...i),a=Number(e.min),n=Number(e.max);let s=Number.isFinite(a)?a:Math.min(0,r),l=Number.isFinite(n)?n:o;const c=Math.max(.08*(l-s),.005);return Number.isFinite(a)||(s-=r<0?c:0),Number.isFinite(n)||(l+=c),l<=s&&(l=s+.01),{min:s,max:l}}(s,t),c=function(t,e,i,r){const o=e.height-e.top-e.bottom;return t.map(t=>({...t,x:Dt(t.timestamp,r,e),y:e.top+(i.max-t.value)/(i.max-i.min)*o}))}(s,n,l,e),p=Date.now(),d=void 0!==this._selectedIndex,h=Math.max(0,Math.min(c.length-1,d?this._selectedIndex??0:It(c,p))),m=d?function(t,e,i){return{...t,timestamp:t.sourceTimestamp??t.timestamp,x:Bt(t,e,i),sourceTimestamp:t.sourceTimestamp??t.timestamp}}(c[h],e,n):function(t,e,i,r){const o=t[function(t,e){if(!t.length)return 0;const i=t=>t.sourceTimestamp??t.timestamp;if(e<=i(t[0]))return 0;let r=0;for(let o=1;o<t.length&&!(i(t[o])>e);o+=1)r=o;return r}(t,e)];return e<i.start||e>i.end?o:{...o,timestamp:e,x:Dt(e,i,r),sourceTimestamp:o.sourceTimestamp??o.timestamp}}(c,p,e,n),u=c.reduce((t,e)=>e.value<t.value?e:t,c[0]),f=c.reduce((t,e)=>e.value>t.value?e:t,c[0]),g=function(t,e){const i=e.current_price_entity||gt,r=t?.states[i]?.state,o=Number(r);return Number.isFinite(o)?o:void 0}(this.hass,t),y=function(t,e){const i=Number(e.cheap_threshold);if(Number.isFinite(i))return i;const r=e.cheap_price_entity||yt;return wt(t?.states[r]?.state)}(this.hass,t),x=i.moreInfoEntityId||t.current_price_entity||gt;return V`
+`;const ut="sensor.real_electricity_price_hourly_prices_yesterday",ft="sensor.real_electricity_price_hourly_prices_today",gt="sensor.real_electricity_price_hourly_prices_tomorrow",yt="sensor.real_electricity_price_current_price",xt="number.real_electricity_price_acceptable_price",bt="€/kWh",vt=36e5,_t=48;function $t(t,e,i){const r=Number(t);if(Number.isFinite(r))return Math.max(e,Math.min(i,r))}function wt(t){if("number"==typeof t&&Number.isFinite(t))return t;if("string"==typeof t){const e=Number(t);if(Number.isFinite(e))return e;const i=new Date(t).getTime();if(Number.isFinite(i))return i}}function At(...t){for(const e of t){if(null==e||""===e)continue;const t=Number(e);if(Number.isFinite(t))return t}}function kt(t){const e=t?.attributes?.hourly_prices;return Array.isArray(e)?e.reduce((t,e)=>{const i=e,r=Array.isArray(i)?wt(i[0]):wt(i.start_time)??wt(i.x),o=Array.isArray(i)?At(i[1]):At(i.actual_price,i.price,i.y,i.nord_pool_price);return void 0===r||void 0===o||t.push({timestamp:r,value:o,sourceTimestamp:r}),t},[]).sort((t,e)=>t.timestamp-e.timestamp):[]}function Et(t){return"line"===(t.chart_type||t.graph_type)?"line":"bar"}function Ct(t){return"click"===t.selector_mode?"click":"hover"}function St(t){return $t(t.height,120,360)||190}function Mt(t){return Math.round($t(t.horizontal_lines,2,9)||5)}function zt(t){return Math.round($t(t.price_decimals,0,6)??4)}function Pt(t){return Math.round($t(t.axis_decimals,0,4)??2)}function Nt(t,e,i=zt(e)){return void 0!==t&&Number.isFinite(t)?`${t.toFixed(i)} ${e.unit||bt}`:"—"}function Tt(t){const e={hour:"2-digit",minute:"2-digit"},i=String(t?.locale?.time_format||"").toLowerCase();return"12"===i&&(e.hour12=!0),"24"===i&&(e.hour12=!1),e}function Ft(t){const e=t?.config?.time_zone;return"string"==typeof e&&e.trim()?e.trim():void 0}function Ut(t,e,i){const r=Ft(t),o=new Date(e);try{return new Intl.DateTimeFormat(t?.locale?.language,r?{...i,timeZone:r}:i).format(o)}catch{return new Intl.DateTimeFormat(t?.locale?.language,i).format(o)}}function Ht(t,e){return`${function(t,e){return Ut(t,e,{day:"numeric",month:"long"})}(t,e)} ${function(t,e){return Ut(t,e,{...Tt(t)})}(t,e)}`}function Ot(t,e,i){return new Intl.DateTimeFormat("en-US",{...i,timeZone:e}).formatToParts(new Date(t)).reduce((t,e)=>("literal"!==e.type&&(t[e.type]=e.value),t),{})}function Rt(t,e){const i=Ot(t,e,{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}),r=Number(i.year),o=Number(i.month),a=Number(i.day),n=Number(i.hour),s=Number(i.minute),l=Number(i.second);return[r,o,a,n,s,l].every(Number.isFinite)?Date.UTC(r,o-1,a,n,s,l)-t:0}function Dt(t){const e=new Date;e.setHours(0,0,0,0);const i=function(t){const e=Ft(t);if(e)try{const t=Ot(Date.now(),e,{year:"numeric",month:"2-digit",day:"2-digit"}),i=Number(t.year),r=Number(t.month),o=Number(t.day);if(![i,r,o].every(Number.isFinite))return;const a=Date.UTC(i,r-1,o,0,0,0,0),n=Rt(a,e);return a-Rt(a-n,e)}catch{return}}(t)??e.getTime();return{start:i,end:i+_t*vt}}function It(t,e,i){const r=i.width-i.left-i.right,o=Math.max(1,e.end-e.start);return i.left+(t-e.start)/o*r}function Lt(t,e){if(!t.length)return 0;if(e<=t[0].timestamp)return 0;let i=0;for(let r=1;r<t.length&&!(t[r].timestamp>e);r+=1)i=r;return i}function jt(t,e){return Math.min(t.timestamp+vt,e.end)}function Bt(t,e,i){return It(jt(t,e),e,i)}function Vt(t,e,i){const r=jt(t,e);return It(t.timestamp+(r-t.timestamp)/2,e,i)}function Wt(t,e,i,r){const o=t.sourceTimestamp??t.timestamp,a=r>=o&&r<o+vt,n=o+vt<=r,s=void 0!==i&&t.value<=i;return a&&s?e.cheap_current_color||"#22c55e":a?e.current_hour_color||"#3b82f6":n&&s?e.cheap_past_color||"#bbf7d0":n?e.past_color||"#bfdbfe":s?e.cheap_color||"#86efac":e.future_color||"#93c5fd"}function qt(t){return{yesterday_entity:ut,today_entity:ft,tomorrow_entity:gt,current_price_entity:yt,cheap_price_entity:xt,chart_type:"bar",selector_mode:"hover",height:190,horizontal_lines:5,price_decimals:4,axis_decimals:2,unit:bt,show_current_marker:!0,show_extremes:!0,show_stats:!0,fill_color:"rgba(56, 199, 243, 0.18)",marker_color:"#38c7f3",grid_color:"var(--divider-color, rgba(127, 127, 127, 0.25))",chart_background:"color-mix(in srgb, var(--card-background-color, #303446) 94%, var(--primary-color, #c39ce3))",card_background:"var(--ha-card-background, var(--card-background-color, #1f1f1f))",...t}}class Gt extends ct{constructor(){super(...arguments),this._dragging=!1,this._stopPointer=t=>{this._dragging=!1;try{t.currentTarget.releasePointerCapture(t.pointerId)}catch{}}}static async getConfigElement(){return await customElements.whenDefined("real-electricity-price-card-editor"),document.createElement("real-electricity-price-card-editor")}static getStubConfig(){return{type:"custom:real-electricity-price-card",yesterday_entity:ut,today_entity:ft,tomorrow_entity:gt,current_price_entity:yt,chart_type:"bar"}}setConfig(t){this._config=qt(t||{})}connectedCallback(){super.connectedCallback(),this._clockTimer=window.setInterval(()=>this.requestUpdate(),3e4)}disconnectedCallback(){void 0!==this._clockTimer&&(window.clearInterval(this._clockTimer),this._clockTimer=void 0),super.disconnectedCallback()}getCardSize(){const t=St(this._config||{});return Math.max(3,Math.ceil((t+150)/50))}render(){if(!this._config)return V``;const t=qt(this._config),e=Dt(this.hass),i=function(t,e,i){const r=e.yesterday_entity||ut,o=e.today_entity||ft,a=e.tomorrow_entity||gt,n=t?.states[r],s=t?.states[o],l=t?.states[a],c=[...kt(n),...kt(s),...kt(l)].reduce((t,e)=>(e.timestamp>=i.start&&e.timestamp<i.end&&t.set(e.timestamp,e),t),new Map),p=[s?void 0:o,l?void 0:a].filter(t=>Boolean(t));return{points:[...c.values()].sort((t,e)=>t.timestamp-e.timestamp),moreInfoEntityId:s?o:l?a:void 0,missingEntityIds:p}}(this.hass,t,e);if(!i.points.length){const t=i.missingEntityIds.length?` Missing: ${i.missingEntityIds.join(", ")}`:"";return this._renderError(`No hourly_prices found.${t}`)}const r=Et(t),o=Ct(t),a="string"==typeof t.name?t.name.trim():"",n={width:360,height:St(t),left:8,right:34,top:15,bottom:24},s=i.points,l=function(t,e){const i=t.map(t=>t.value),r=Math.min(...i),o=Math.max(...i),a=Number(e.min),n=Number(e.max);let s=Number.isFinite(a)?a:Math.min(0,r),l=Number.isFinite(n)?n:o;const c=Math.max(.08*(l-s),.005);return Number.isFinite(a)||(s-=r<0?c:0),Number.isFinite(n)||(l+=c),l<=s&&(l=s+.01),{min:s,max:l}}(s,t),c=function(t,e,i,r){const o=e.height-e.top-e.bottom;return t.map(t=>({...t,x:It(t.timestamp,r,e),y:e.top+(i.max-t.value)/(i.max-i.min)*o}))}(s,n,l,e),p=Date.now(),d=void 0!==this._selectedIndex,h=Math.max(0,Math.min(c.length-1,d?this._selectedIndex??0:Lt(c,p))),m=d?function(t,e,i){return{...t,timestamp:t.sourceTimestamp??t.timestamp,x:Vt(t,e,i),sourceTimestamp:t.sourceTimestamp??t.timestamp}}(c[h],e,n):function(t,e,i,r){const o=t[function(t,e){if(!t.length)return 0;const i=t=>t.sourceTimestamp??t.timestamp;if(e<=i(t[0]))return 0;let r=0;for(let o=1;o<t.length&&!(i(t[o])>e);o+=1)r=o;return r}(t,e)];return e<i.start||e>i.end?o:{...o,timestamp:e,x:It(e,i,r),sourceTimestamp:o.sourceTimestamp??o.timestamp}}(c,p,e,n),u=c.reduce((t,e)=>e.value<t.value?e:t,c[0]),f=c.reduce((t,e)=>e.value>t.value?e:t,c[0]),g=function(t,e){const i=e.current_price_entity||yt,r=t?.states[i]?.state,o=Number(r);return Number.isFinite(o)?o:void 0}(this.hass,t),y=function(t,e){const i=Number(e.cheap_threshold);if(Number.isFinite(i))return i;const r=e.cheap_price_entity||xt;return At(t?.states[r]?.state)}(this.hass,t),x=i.moreInfoEntityId||t.current_price_entity||yt;return V`
       <ha-card class="price-card" style=${`--rep-card-bg:${t.card_background};--rep-chart-bg:${t.chart_background};--rep-grid:${t.grid_color};--rep-marker:${t.marker_color};`}>
         <div class="price-content">
           ${a?V`
             <div class="price-head">
-              <button class="price-title" @click=${()=>this._openMoreInfo(x)}>
+              <button type="button" class="price-title" aria-haspopup="dialog" aria-label=${`${a}: details`} title="Details" @click=${()=>this._openMoreInfo(x)}>
                 <span>${a}</span>
+                <ha-icon .icon=${ht} aria-hidden="true"></ha-icon>
               </button>
             </div>
           `:G}
@@ -575,8 +576,8 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
           <div class="price-chart-frame">
             <div class="price-chart-head">
               <div class="price-selected">
-                <span>${Ut(this.hass,m.timestamp)}</span>
-                <strong>${Pt(m.value,t)}</strong>
+                <span>${Ht(this.hass,m.timestamp)}</span>
+                <strong>${Nt(m.value,t)}</strong>
               </div>
             </div>
             <div class="price-chart-body">
@@ -597,22 +598,22 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
       <div class="price-stats">
         <div class="price-stat">
           <span>Now</span>
-          <strong>${Pt(o,t)}</strong>
+          <strong>${Nt(o,t)}</strong>
         </div>
         <div class="price-stat">
           <span>Low</span>
-          <strong>${Pt(i.value,t)}</strong>
+          <strong>${Nt(i.value,t)}</strong>
         </div>
         <div class="price-stat">
           <span>Average</span>
-          <strong>${Pt(function(t){if(t.length)return t.reduce((t,e)=>t+e.value,0)/t.length}(e),t)}</strong>
+          <strong>${Nt(function(t){if(t.length)return t.reduce((t,e)=>t+e.value,0)/t.length}(e),t)}</strong>
         </div>
         <div class="price-stat">
           <span>High</span>
-          <strong>${Pt(r.value,t)}</strong>
+          <strong>${Nt(r.value,t)}</strong>
         </div>
       </div>
-    `}_renderChart(t,e,i,r,o,a,n,s,l,c,p,d){const h=e.height-e.bottom,m=Math.max(e.top,Math.min(h,e.top+(n.max-0)/(n.max-n.min)*(e.height-e.top-e.bottom))),u=(e.width-e.left-e.right)/vt,f=Math.max(2,Math.min(14,.9*u)),g=function(t){return[0,vt/3,2*vt/3,vt].map(e=>t.start+e*bt)}(c),y=Dt(Date.now(),c,e),x=!1!==t.show_current_marker&&y>=e.left&&y<=e.width-e.right,b=Bt(o,c,e),v=Bt(a,c,e),_="rep-line-fill",$="rep-line-color",w=Math.max(1,e.width-e.left-e.right),A=i.flatMap(i=>{const r=Vt(i,t,p,d),o=Math.max(0,Math.min(100,(i.x-e.left)/w*100)),a=Math.max(0,Math.min(100,(jt(i,c,e)-e.left)/w*100));return[W`<stop offset=${`${o}%`} stop-color=${r}></stop>`,W`<stop offset=${`${a}%`} stop-color=${r}></stop>`]});return V`
+    `}_renderChart(t,e,i,r,o,a,n,s,l,c,p,d){const h=e.height-e.bottom,m=Math.max(e.top,Math.min(h,e.top+(n.max-0)/(n.max-n.min)*(e.height-e.top-e.bottom))),u=(e.width-e.left-e.right)/_t,f=Math.max(2,Math.min(14,.9*u)),g=function(t){return[0,_t/3,2*_t/3,_t].map(e=>t.start+e*vt)}(c),y=It(Date.now(),c,e),x=!1!==t.show_current_marker&&y>=e.left&&y<=e.width-e.right,b=Vt(o,c,e),v=Vt(a,c,e),_="rep-line-fill",$="rep-line-color",w=Math.max(1,e.width-e.left-e.right),A=i.flatMap(i=>{const r=Wt(i,t,p,d),o=Math.max(0,Math.min(100,(i.x-e.left)/w*100)),a=Math.max(0,Math.min(100,(Bt(i,c,e)-e.left)/w*100));return[W`<stop offset=${`${o}%`} stop-color=${r}></stop>`,W`<stop offset=${`${a}%`} stop-color=${r}></stop>`]});return V`
       <svg
         class="price-chart"
         viewBox=${`0 0 ${e.width} ${e.height}`}
@@ -622,8 +623,8 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
         aria-label="Electricity price interval"
         aria-valuemin="0"
         aria-valuemax=${i.length-1}
-        aria-valuenow=${It(i,r.timestamp)}
-        aria-valuetext=${`${Ut(this.hass,r.timestamp)} ${Pt(r.value,t)}`}
+        aria-valuenow=${Lt(i,r.timestamp)}
+        aria-valuetext=${`${Ht(this.hass,r.timestamp)} ${Nt(r.value,t)}`}
         @keydown=${t=>this._selectKeyboard(t,i,r.timestamp)}
         @pointerdown=${t=>this._selectPoint(t,i,e,l,c)}
         @pointermove=${t=>this._selectPoint(t,i,e,l,c)}
@@ -648,15 +649,15 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
           <text class="price-extreme" x=${v} y=${Math.max(11,a.y-9)}>H</text>
         `}
         <line class="price-selected-line" x1=${r.x} x2=${r.x} y1=${e.top} y2=${h}></line>
-        <title>${Ut(this.hass,r.timestamp)} ${Pt(r.value,t)}</title>
-        <desc>${i.length} available hourly electricity price points in a fixed ${vt}-hour chart window.</desc>
+        <title>${Ht(this.hass,r.timestamp)} ${Nt(r.value,t)}</title>
+        <desc>${i.length} available hourly electricity price points in a fixed ${_t}-hour chart window.</desc>
       </svg>
-    `}_renderGrid(t,e,i,r,o){const a=e.height-e.bottom,n=St(t);return[...Array.from({length:n},(r,o)=>{const s=1-o/(n-1),l=e.top+o/(n-1)*(a-e.top),c=i.min+(i.max-i.min)*s;return W`
+    `}_renderGrid(t,e,i,r,o){const a=e.height-e.bottom,n=Mt(t);return[...Array.from({length:n},(r,o)=>{const s=1-o/(n-1),l=e.top+o/(n-1)*(a-e.top),c=i.min+(i.max-i.min)*s;return W`
           <line class="price-grid-line" x1=${e.left} x2=${e.width-e.right} y1=${l} y2=${l}></line>
-          <text class="price-axis-label" x=${e.width-2} y=${l}>${function(t,e){return`${t.toFixed(zt(e))}€`}(c,t)}</text>
-        `}),...r.map((t,i)=>{const n=Dt(t,o,e),s=0===i?" price-time-label-start":i===r.length-1?" price-time-label-end":"";return W`
+          <text class="price-axis-label" x=${e.width-2} y=${l}>${function(t,e){return`${t.toFixed(Pt(e))}€`}(c,t)}</text>
+        `}),...r.map((t,i)=>{const n=It(t,o,e),s=0===i?" price-time-label-start":i===r.length-1?" price-time-label-end":"";return W`
           <line class="price-time-line" x1=${n} x2=${n} y1=${e.top} y2=${a}></line>
-          <text class=${`price-time-label${s}`} x=${n} y=${e.height-6}>${function(t,e){return Ut(t,e)}(this.hass,t)}</text>
+          <text class=${`price-time-label${s}`} x=${n} y=${e.height-6}>${function(t,e){return Ht(t,e)}(this.hass,t)}</text>
         `})]}_renderBarChart(t,e,i,r,o,a,n,s){const l=o.timestamp,c=o.sourceTimestamp,p=Math.max(0,(r-i)/2);return t.map(t=>{const r=Math.min(t.y,e),o=Math.max(1,Math.abs(e-t.y)),d=t.timestamp===l||void 0!==c&&t.sourceTimestamp===c?" price-bar-selected":"";return W`
         <rect
           class=${`price-bar${d}`}
@@ -665,13 +666,13 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
           width=${i}
           height=${o}
           rx="2.5"
-          fill=${Vt(t,a,n,s)}
+          fill=${Wt(t,a,n,s)}
         ></rect>
-      `})}_renderLineChart(t,e,i,r,o,a){const n=function(t,e,i,r){const o=[];let a,n="",s=0,l=0;const c=()=>{n&&(o.push({line:n,area:`${n} L ${l.toFixed(2)} ${e.toFixed(2)} L ${s.toFixed(2)} ${e.toFixed(2)} Z`}),n="")};return t.forEach(t=>{const e=t.x,o=jt(t,i,r),p=a&&Math.abs(t.timestamp-(a.timestamp+bt))<6e4;n&&p?n+=` L ${e.toFixed(2)} ${t.y.toFixed(2)}`:(c(),s=e,n=`M ${e.toFixed(2)} ${t.y.toFixed(2)}`),n+=` L ${o.toFixed(2)} ${t.y.toFixed(2)}`,l=o,a=t}),c(),o}(t,e,o,a);return W`
+      `})}_renderLineChart(t,e,i,r,o,a){const n=function(t,e,i,r){const o=[];let a,n="",s=0,l=0;const c=()=>{n&&(o.push({line:n,area:`${n} L ${l.toFixed(2)} ${e.toFixed(2)} L ${s.toFixed(2)} ${e.toFixed(2)} Z`}),n="")};return t.forEach(t=>{const e=t.x,o=Bt(t,i,r),p=a&&Math.abs(t.timestamp-(a.timestamp+vt))<6e4;n&&p?n+=` L ${e.toFixed(2)} ${t.y.toFixed(2)}`:(c(),s=e,n=`M ${e.toFixed(2)} ${t.y.toFixed(2)}`),n+=` L ${o.toFixed(2)} ${t.y.toFixed(2)}`,l=o,a=t}),c(),o}(t,e,o,a);return W`
       ${n.map(t=>W`<path class="price-line-area" d=${t.area} fill=${`url(#${i})`}></path>`)}
       ${n.map(t=>W`<path class="price-line-shadow" d=${t.line}></path>`)}
       ${n.map(t=>W`<path class="price-line" d=${t.line} stroke=${`url(#${r})`}></path>`)}
-    `}_selectKeyboard(t,e,i){let r=It(e,i);switch(t.key){case"ArrowLeft":case"ArrowDown":r-=1;break;case"ArrowRight":case"ArrowUp":r+=1;break;case"PageDown":r-=6;break;case"PageUp":r+=6;break;case"Home":r=0;break;case"End":r=e.length-1;break;default:return}t.preventDefault(),this._selectedIndex=Math.max(0,Math.min(e.length-1,r))}_selectPoint(t,e,i,r,o){const a="hover"===r&&"pointermove"===t.type&&"touch"!==t.pointerType;if("pointermove"===t.type&&!a&&!this._dragging)return;if("pointerdown"===t.type){this._dragging=!0;try{t.currentTarget.setPointerCapture(t.pointerId)}catch{}}"touch"!==t.pointerType&&t.preventDefault();const n=t.currentTarget.getBoundingClientRect(),s=function(t,e,i){const r=i.width-i.left-i.right,o=Math.max(1,e.end-e.start),a=Math.max(i.left,Math.min(i.width-i.right,t));return e.start+(a-i.left)/Math.max(1,r)*o}((t.clientX-n.left)/Math.max(1,n.width)*i.width,o,i);this._selectedIndex=It(e,s)}_openMoreInfo(t){t&&function(t,e){t.dispatchEvent(new CustomEvent("hass-more-info",{detail:{entityId:e},bubbles:!0,composed:!0}))}(this,t)}}qt.properties={hass:{attribute:!1},_config:{state:!0},_selectedIndex:{state:!0}},qt.styles=[dt,ht,n`
+    `}_selectKeyboard(t,e,i){let r=Lt(e,i);switch(t.key){case"ArrowLeft":case"ArrowDown":r-=1;break;case"ArrowRight":case"ArrowUp":r+=1;break;case"PageDown":r-=6;break;case"PageUp":r+=6;break;case"Home":r=0;break;case"End":r=e.length-1;break;default:return}t.preventDefault(),this._selectedIndex=Math.max(0,Math.min(e.length-1,r))}_selectPoint(t,e,i,r,o){const a="hover"===r&&"pointermove"===t.type&&"touch"!==t.pointerType;if("pointermove"===t.type&&!a&&!this._dragging)return;if("pointerdown"===t.type){this._dragging=!0;try{t.currentTarget.setPointerCapture(t.pointerId)}catch{}}"touch"!==t.pointerType&&t.preventDefault();const n=t.currentTarget.getBoundingClientRect(),s=function(t,e,i){const r=i.width-i.left-i.right,o=Math.max(1,e.end-e.start),a=Math.max(i.left,Math.min(i.width-i.right,t));return e.start+(a-i.left)/Math.max(1,r)*o}((t.clientX-n.left)/Math.max(1,n.width)*i.width,o,i);this._selectedIndex=Lt(e,s)}_openMoreInfo(t){t&&function(t,e){t.dispatchEvent(new CustomEvent("hass-more-info",{detail:{entityId:e},bubbles:!0,composed:!0}))}(this,t)}}Gt.properties={hass:{attribute:!1},_config:{state:!0},_selectedIndex:{state:!0}},Gt.styles=[dt,mt,n`
     :host {
       display: block;
       color: var(--primary-text-color);
@@ -706,7 +707,10 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
     }
 
     .price-title {
-      max-width: min(70%, 460px);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
       padding: 0;
       border: 0;
       background: transparent;
@@ -719,6 +723,9 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
       text-align: left;
       cursor: pointer;
     }
+
+    .price-title span { min-width: 0; overflow-wrap: anywhere; }
+    .price-title ha-icon { width: 22px; height: 22px; --mdc-icon-size: 22px; flex: 0 0 22px; color: var(--secondary-text-color); }
 
     .price-title:focus {
       outline: none;
@@ -982,37 +989,37 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
-  `];class Gt extends ct{constructor(){super(...arguments),this._config=qt.getStubConfig()}setConfig(t){this._config=Wt(t||{})}render(){const t=Wt(this._config);return V`
+  `];class Zt extends ct{constructor(){super(...arguments),this._config=Gt.getStubConfig()}setConfig(t){this._config=qt(t||{})}render(){const t=qt(this._config);return V`
       <div class="editor">
         ${this._textField("Name (optional)","name",t.name||"")}
-        ${this._textField("Yesterday Prices Entity","yesterday_entity",t.yesterday_entity||mt)}
+        ${this._textField("Yesterday Prices Entity","yesterday_entity",t.yesterday_entity||ut)}
         <div class="grid">
-          ${this._textField("Today Prices Entity","today_entity",t.today_entity||ut)}
-          ${this._textField("Tomorrow Prices Entity","tomorrow_entity",t.tomorrow_entity||ft)}
+          ${this._textField("Today Prices Entity","today_entity",t.today_entity||ft)}
+          ${this._textField("Tomorrow Prices Entity","tomorrow_entity",t.tomorrow_entity||gt)}
         </div>
-        ${this._textField("Current Price Entity","current_price_entity",t.current_price_entity||gt)}
-        ${this._textField("Acceptable Price Entity","cheap_price_entity",t.cheap_price_entity||yt)}
+        ${this._textField("Current Price Entity","current_price_entity",t.current_price_entity||yt)}
+        ${this._textField("Acceptable Price Entity","cheap_price_entity",t.cheap_price_entity||xt)}
         <label>
           <span>Chart Type</span>
-          <select .value=${kt(t)} @change=${t=>this._setValue("chart_type",t.target.value)}>
+          <select .value=${Et(t)} @change=${t=>this._setValue("chart_type",t.target.value)}>
             <option value="bar">Bars</option>
             <option value="line">Step line</option>
           </select>
         </label>
         <label>
           <span>Selector Mode</span>
-          <select .value=${Et(t)} @change=${t=>this._setValue("selector_mode",t.target.value)}>
+          <select .value=${Ct(t)} @change=${t=>this._setValue("selector_mode",t.target.value)}>
             <option value="hover">Hover</option>
             <option value="click">Click / tap</option>
           </select>
         </label>
         <div class="grid">
-          ${this._numberField("Height","height",Ct(t),120,360)}
-          ${this._numberField("Horizontal Lines","horizontal_lines",St(t),2,9)}
-          ${this._numberField("Price Decimals","price_decimals",Mt(t),0,6)}
-          ${this._numberField("Axis Decimals","axis_decimals",zt(t),0,4)}
+          ${this._numberField("Height","height",St(t),120,360)}
+          ${this._numberField("Horizontal Lines","horizontal_lines",Mt(t),2,9)}
+          ${this._numberField("Price Decimals","price_decimals",zt(t),0,6)}
+          ${this._numberField("Axis Decimals","axis_decimals",Pt(t),0,4)}
         </div>
-        ${this._textField("Unit","unit",t.unit||xt)}
+        ${this._textField("Unit","unit",t.unit||bt)}
         <div class="grid">
           ${this._numberField("Y Min","min",t.min??"",void 0,void 0,!0)}
           ${this._numberField("Y Max","max",t.max??"",void 0,void 0,!0)}
@@ -1075,7 +1082,7 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
         />
         <span>${t}</span>
       </label>
-    `}_setValue(t,e){const i={...this._config};var r,o;void 0===e||""===e?delete i[t]:i[t]=e,this._config=i,r="config-changed",o={config:i},this.dispatchEvent(new CustomEvent(r,{detail:o,bubbles:!0,composed:!0}))}}Gt.properties={hass:{attribute:!1},_config:{state:!0}},Gt.styles=n`
+    `}_setValue(t,e){const i={...this._config};var r,o;void 0===e||""===e?delete i[t]:i[t]=e,this._config=i,r="config-changed",o={config:i},this.dispatchEvent(new CustomEvent(r,{detail:o,bubbles:!0,composed:!0}))}}Zt.properties={hass:{attribute:!1},_config:{state:!0}},Zt.styles=n`
     :host {
       display: block;
     }
@@ -1145,4 +1152,4 @@ const w=globalThis,A=t=>t,k=w.trustedTypes,E=k?k.createPolicy("lit-html",{create
     .checkbox input {
       width: auto;
     }
-  `,customElements.get("real-electricity-price-card")||customElements.define("real-electricity-price-card",qt),customElements.get("real-electricity-price-card-editor")||customElements.define("real-electricity-price-card-editor",Gt),window.customCards=window.customCards||[],window.customCards.push({type:"real-electricity-price-card",name:"Real Electricity Price Card",description:"Interactive electricity price chart for real-electricity-price",preview:!1,version:"0.1.19"});
+  `,customElements.get("real-electricity-price-card")||customElements.define("real-electricity-price-card",Gt),customElements.get("real-electricity-price-card-editor")||customElements.define("real-electricity-price-card-editor",Zt),window.customCards=window.customCards||[],window.customCards.push({type:"real-electricity-price-card",name:"Real Electricity Price Card",description:"Interactive electricity price chart for real-electricity-price",preview:!1,version:"0.1.20"});

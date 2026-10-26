@@ -9,6 +9,11 @@ const items=[0,1,3,4].map((h,i)=>({x:start.getTime()+h*3600000,y:[-.05,.1,.25,.3
 card.setConfig({type:'custom:real-electricity-price-card',name:'Electricity',show_stats:true});
 card.hass={locale:{language:'en-GB',time_format:'24'},config:{time_zone:'UTC'},states:{'sensor.real_electricity_price_hourly_prices_today':{state:'0.1',attributes:{hourly_prices:items}},'sensor.real_electricity_price_current_price':{state:'unavailable',attributes:{}}}};
 document.body.append(card);await card.updateComplete;
+let detailsEvent;
+document.body.addEventListener('hass-more-info',event=>{detailsEvent=event;},{once:true});
+card.shadowRoot.querySelector('.price-title').click();
+assert.equal(detailsEvent?.detail.entityId,'sensor.real_electricity_price_hourly_prices_today','Details opens the native HA entity dialog for the actual price source');
+assert.equal(card.shadowRoot.querySelectorAll('dialog').length,0,'Native entity details does not stack a second custom dialog');
 let chart=card.shadowRoot.querySelector('[role=slider]');assert.ok(chart);
 const key=async k=>{chart.dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true,cancelable:true}));await card.updateComplete;chart=card.shadowRoot.querySelector('[role=slider]');};
 await key('Home');assert.equal(chart.getAttribute('aria-valuenow'),'0');assert.match(chart.getAttribute('aria-valuetext'),/-0.0500/);

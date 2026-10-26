@@ -1,8 +1,8 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 import { designTokens } from './shared/design-tokens';
-import { familyStyles, showEntityMoreInfo } from '@bitosome/ha-card-ui';
+import { familyStyles, showEntityMoreInfo, UI_ICONS } from '@bitosome/ha-card-ui';
 
-const CARD_VERSION = '0.1.19';
+const CARD_VERSION = '0.1.20';
 const DEFAULT_YESTERDAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_yesterday';
 const DEFAULT_TODAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_today';
 const DEFAULT_TOMORROW_ENTITY = 'sensor.real_electricity_price_hourly_prices_tomorrow';
@@ -630,8 +630,9 @@ class RealElectricityPriceCard extends LitElement {
         <div class="price-content">
           ${title ? html`
             <div class="price-head">
-              <button class="price-title" @click=${() => this._openMoreInfo(moreInfoEntityId)}>
+              <button type="button" class="price-title" aria-haspopup="dialog" aria-label=${`${title}: details`} title="Details" @click=${() => this._openMoreInfo(moreInfoEntityId)}>
                 <span>${title}</span>
+                <ha-icon .icon=${UI_ICONS.details} aria-hidden="true"></ha-icon>
               </button>
             </div>
           ` : nothing}
@@ -942,7 +943,10 @@ class RealElectricityPriceCard extends LitElement {
     }
 
     .price-title {
-      max-width: min(70%, 460px);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
       padding: 0;
       border: 0;
       background: transparent;
@@ -955,6 +959,9 @@ class RealElectricityPriceCard extends LitElement {
       text-align: left;
       cursor: pointer;
     }
+
+    .price-title span { min-width: 0; overflow-wrap: anywhere; }
+    .price-title ha-icon { width: 22px; height: 22px; --mdc-icon-size: 22px; flex: 0 0 22px; color: var(--secondary-text-color); }
 
     .price-title:focus {
       outline: none;
