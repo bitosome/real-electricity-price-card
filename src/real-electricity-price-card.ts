@@ -1,8 +1,21 @@
 import { LitElement, TemplateResult, css, html, nothing, svg } from 'lit';
 import { designTokens } from './shared/design-tokens';
-import { familyStyles, showEntityMoreInfo, UI_ICONS } from '@bitosome/ha-card-ui';
+import {
+  componentStyles,
+  familyStyles,
+  formatHassDateTime,
+  formatHassNumber,
+  hassTimeZone,
+  headerStyles,
+  isAvailableValue,
+  notice,
+  showEntityMoreInfo,
+  telemetryStyles,
+  UI_ICONS,
+  UNAVAILABLE_TEXT,
+} from '@bitosome/ha-card-ui';
 
-const CARD_VERSION = '0.1.21';
+const CARD_VERSION = '0.2.0';
 const DEFAULT_YESTERDAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_yesterday';
 const DEFAULT_TODAY_ENTITY = 'sensor.real_electricity_price_hourly_prices_today';
 const DEFAULT_TOMORROW_ENTITY = 'sensor.real_electricity_price_hourly_prices_tomorrow';
@@ -11,6 +24,11 @@ const DEFAULT_CHEAP_PRICE_ENTITY = 'number.real_electricity_price_acceptable_pri
 const DEFAULT_UNIT = '€/kWh';
 const HOUR_MS = 60 * 60 * 1000;
 const CHART_HOURS = 48;
+const CHART_WIDTH = 360;
+// Chart labels are 11 CSS pixels, so label room is estimated in pixels and converted to viewBox units.
+const AXIS_LABEL_CHAR_PX = 5.8;
+const TIME_LABEL_SPACING_PX = 96;
+const TICK_STEP_HOURS = [6, 8, 12, 16, 24];
 
 type SelectorMode = 'hover' | 'click';
 
@@ -23,7 +41,9 @@ interface HomeAssistant {
   states: Record<string, HassEntity | undefined>;
   locale?: {
     language?: string;
+    number_format?: string;
     time_format?: string;
+    time_zone?: string;
   };
   config?: {
     time_zone?: string;
@@ -196,57 +216,29 @@ function axisDecimals(config: RealElectricityPriceCardConfig): number {
   return Math.round(configNumber(config.axis_decimals, 0, 4) ?? 2);
 }
 
-function formatPrice(value: number | undefined, config: RealElectricityPriceCardConfig, decimals = priceDecimals(config)): string {
-  if (value === undefined || !Number.isFinite(value)) return '—';
-  return `${value.toFixed(decimals)} ${config.unit || DEFAULT_UNIT}`;
+function priceUnit(config: RealElectricityPriceCardConfig): string {
+  return config.unit || DEFAULT_UNIT;
 }
 
-function formatAxisPrice(value: number, config: RealElectricityPriceCardConfig): string {
-  return `${value.toFixed(axisDecimals(config))}€`;
+function formatPrice(hass: HomeAssistant | undefined, value: number | undefined, config: RealElectricityPriceCardConfig): string {
+  return formatHassNumber(hass, value, { digits: priceDecimals(config), unit: priceUnit(config) });
 }
 
-function timeFormatOptions(hass?: HomeAssistant): Intl.DateTimeFormatOptions {
-  const options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
-  const format = String(hass?.locale?.time_format || '').toLowerCase();
-  if (format === '12') options.hour12 = true;
-  if (format === '24') options.hour12 = false;
-  return options;
+/** The axis keeps labels short: the configured unit up to its "/", e.g. "€" for "€/kWh". */
+function axisUnit(config: RealElectricityPriceCardConfig): string | undefined {
+  return priceUnit(config).split('/')[0].trim() || undefined;
+}
+
+function formatAxisPrice(hass: HomeAssistant | undefined, value: number, config: RealElectricityPriceCardConfig): string {
+  return formatHassNumber(hass, value, { digits: axisDecimals(config), unit: axisUnit(config) });
 }
 
 function homeTimeZone(hass?: HomeAssistant): string | undefined {
-  const zone = hass?.config?.time_zone;
-  return typeof zone === 'string' && zone.trim() ? zone.trim() : undefined;
-}
-
-function formatInHomeTimeZone(hass: HomeAssistant | undefined, timestamp: number, options: Intl.DateTimeFormatOptions): string {
-  const zone = homeTimeZone(hass);
-  const date = new Date(timestamp);
-  try {
-    return new Intl.DateTimeFormat(hass?.locale?.language, zone ? { ...options, timeZone: zone } : options).format(date);
-  } catch {
-    return new Intl.DateTimeFormat(hass?.locale?.language, options).format(date);
-  }
-}
-
-function formatDateLabel(hass: HomeAssistant | undefined, timestamp: number): string {
-  return formatInHomeTimeZone(hass, timestamp, {
-    day: 'numeric',
-    month: 'long',
-  });
-}
-
-function formatTimeOnly(hass: HomeAssistant | undefined, timestamp: number): string {
-  return formatInHomeTimeZone(hass, timestamp, {
-    ...timeFormatOptions(hass),
-  });
+  return hassTimeZone(hass);
 }
 
 function formatDateTime(hass: HomeAssistant | undefined, timestamp: number): string {
-  return `${formatDateLabel(hass, timestamp)} ${formatTimeOnly(hass, timestamp)}`;
-}
-
-function formatTimeLabel(hass: HomeAssistant | undefined, timestamp: number): string {
-  return formatDateTime(hass, timestamp);
+  return formatHassDateTime(hass, timestamp, { year: false });
 }
 
 function timeZoneParts(timestamp: number, timeZone: string, options: Intl.DateTimeFormatOptions): Record<string, string> {
@@ -433,9 +425,29 @@ function intervalCenterPoint(point: ChartPoint, domain: ChartDomain, box: ChartB
   };
 }
 
-function domainTicks(domain: ChartDomain): number[] {
-  return [0, CHART_HOURS / 3, (CHART_HOURS * 2) / 3, CHART_HOURS]
-    .map((hours) => domain.start + (hours * HOUR_MS));
+function domainTicks(domain: ChartDomain, plotWidthPx: number): number[] {
+  const maxTicks = Math.floor(plotWidthPx / TIME_LABEL_SPACING_PX) + 1;
+  const step = TICK_STEP_HOURS.find((hours) => (CHART_HOURS / hours) + 1 <= maxTicks)
+    ?? TICK_STEP_HOURS[TICK_STEP_HOURS.length - 1];
+  return Array.from({ length: (CHART_HOURS / step) + 1 }, (_, index) => domain.start + (index * step * HOUR_MS));
+}
+
+function axisLabelValues(config: RealElectricityPriceCardConfig, range: PriceRange): number[] {
+  const lines = horizontalLineCount(config);
+  return Array.from({ length: lines }, (_, index) => range.min + ((range.max - range.min) * (1 - (index / (lines - 1)))));
+}
+
+/** Margins are kept in CSS pixels and converted with the current viewBox scale. */
+function chartBox(config: RealElectricityPriceCardConfig, scale: number, axisLabels: string[]): ChartBox {
+  const longestLabel = Math.max(0, ...axisLabels.map((label) => label.length));
+  return {
+    width: CHART_WIDTH,
+    height: chartHeight(config),
+    left: 8,
+    right: Math.max(34, longestLabel * AXIS_LABEL_CHAR_PX + 8) * scale,
+    top: 15 * scale,
+    bottom: 24 * scale,
+  };
 }
 
 function stepPathSegments(points: ChartPoint[], baseline: number, domain: ChartDomain, box: ChartBox): StepPathSegment[] {
@@ -551,10 +563,17 @@ class RealElectricityPriceCard extends LitElement {
 
   private _clockTimer?: number;
 
+  private _chartWidth?: number;
+
+  private _resizeObserver?: ResizeObserver;
+
+  private _observedChart?: Element;
+
   static properties = {
     hass: { attribute: false },
     _config: { state: true },
     _selectedIndex: { state: true },
+    _chartWidth: { state: true },
   };
 
   public static async getConfigElement(): Promise<HTMLElement> {
@@ -580,6 +599,8 @@ class RealElectricityPriceCard extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     this._clockTimer = window.setInterval(() => this.requestUpdate(), 30_000);
+    // Re-attach the chart size observer after the card is moved in the DOM.
+    if (this.hasUpdated) this.requestUpdate();
   }
 
   disconnectedCallback(): void {
@@ -587,7 +608,22 @@ class RealElectricityPriceCard extends LitElement {
       window.clearInterval(this._clockTimer);
       this._clockTimer = undefined;
     }
+    this._resizeObserver?.disconnect();
+    this._observedChart = undefined;
     super.disconnectedCallback();
+  }
+
+  protected updated(): void {
+    const chartBody = this.renderRoot.querySelector('.price-chart-body') || undefined;
+    if (chartBody === this._observedChart) return;
+    this._observedChart = chartBody;
+    this._resizeObserver?.disconnect();
+    if (!chartBody || typeof ResizeObserver === 'undefined') return;
+    this._resizeObserver ??= new ResizeObserver((entries) => {
+      const width = Math.round(entries[0]?.contentRect.width || 0);
+      if (width > 0 && width !== this._chartWidth) this._chartWidth = width;
+    });
+    this._resizeObserver.observe(chartBody);
   }
 
   public getCardSize(): number {
@@ -601,17 +637,16 @@ class RealElectricityPriceCard extends LitElement {
     const domain = fixedChartDomain(this.hass);
     const priceData = hourlyPriceData(this.hass, config, domain);
 
-    if (!priceData.points.length) {
-      const missing = priceData.missingEntityIds.length ? ` Missing: ${priceData.missingEntityIds.join(', ')}` : '';
-      return this._renderError(`No hourly_prices found.${missing}`);
-    }
+    if (!priceData.points.length) return this._renderUnavailable(priceData.missingEntityIds);
 
     const type = chartType(config);
     const selector = selectorMode(config);
     const title = typeof config.name === 'string' ? config.name.trim() : '';
-    const box: ChartBox = { width: 360, height: chartHeight(config), left: 8, right: 34, top: 15, bottom: 24 };
     const chartRawPoints = priceData.points;
     const range = valueRange(chartRawPoints, config);
+    const scale = CHART_WIDTH / Math.max(120, this._chartWidth || CHART_WIDTH);
+    const axisLabels = axisLabelValues(config, range).map((value) => formatAxisPrice(this.hass, value, config));
+    const box = chartBox(config, scale, axisLabels);
     const points = buildChartPoints(chartRawPoints, box, range, domain);
     const now = Date.now();
     const hasManualSelection = this._selectedIndex !== undefined;
@@ -630,7 +665,7 @@ class RealElectricityPriceCard extends LitElement {
         <div class="price-content">
           ${title ? html`
             <div class="price-head">
-              <button type="button" class="price-title" aria-haspopup="dialog" aria-label=${`${title}: details`} title="Details" @click=${() => this._openMoreInfo(moreInfoEntityId)}>
+              <button type="button" class="price-title family-title" aria-haspopup="dialog" aria-label=${`${title}: details`} title="Details" @click=${() => this._openMoreInfo(moreInfoEntityId)}>
                 <span>${title}</span>
                 <ha-icon .icon=${UI_ICONS.details} aria-hidden="true"></ha-icon>
               </button>
@@ -643,11 +678,11 @@ class RealElectricityPriceCard extends LitElement {
             <div class="price-chart-head">
               <div class="price-selected">
                 <span>${formatDateTime(this.hass, selected.timestamp)}</span>
-                <strong>${formatPrice(selected.value, config)}</strong>
+                <strong>${formatPrice(this.hass, selected.value, config)}</strong>
               </div>
             </div>
             <div class="price-chart-body">
-              ${this._renderChart(config, box, points, selected, minPoint, maxPoint, range, type, selector, domain, cheapThreshold, now)}
+              ${this._renderChart(config, box, scale, axisLabels, points, selected, minPoint, maxPoint, range, type, selector, domain, cheapThreshold, now)}
               <span
                 class="price-selected-dot"
                 style=${`left:${((selected.x / box.width) * 100).toFixed(2)}%;top:${((selected.y / box.height) * 100).toFixed(2)}%;`}
@@ -659,10 +694,17 @@ class RealElectricityPriceCard extends LitElement {
     `;
   }
 
-  private _renderError(message: string): TemplateResult {
+  private _renderUnavailable(missingEntityIds: string[]): TemplateResult {
+    // Both price sources missing is a configuration problem; existing sources without data are only unavailable.
+    const notFound = missingEntityIds.length >= 2;
+    const missing = missingEntityIds.length ? ` Missing: ${missingEntityIds.join(', ')}` : '';
     return html`
       <ha-card class="price-card">
-        <div class="price-content price-error">${message}</div>
+        <div class="price-content">
+          ${notFound
+            ? notice({ tone: 'error', title: 'Price entities not found', message: missing.trim() })
+            : notice({ tone: 'neutral', title: UNAVAILABLE_TEXT, message: `No hourly prices are available yet.${missing}` })}
+        </div>
       </ha-card>
     `;
   }
@@ -675,23 +717,22 @@ class RealElectricityPriceCard extends LitElement {
     current: number | undefined,
   ): TemplateResult {
     return html`
-      <div class="price-stats">
-        <div class="price-stat">
-          <span>Now</span>
-          <strong>${formatPrice(current, config)}</strong>
-        </div>
-        <div class="price-stat">
-          <span>Low</span>
-          <strong>${formatPrice(minPoint.value, config)}</strong>
-        </div>
-        <div class="price-stat">
-          <span>Average</span>
-          <strong>${formatPrice(average(points), config)}</strong>
-        </div>
-        <div class="price-stat">
-          <span>High</span>
-          <strong>${formatPrice(maxPoint.value, config)}</strong>
-        </div>
+      <div class="price-stats family-telemetry">
+        ${this._renderStat('Now', current, config)}
+        ${this._renderStat('Low', minPoint.value, config)}
+        ${this._renderStat('Average', average(points), config)}
+        ${this._renderStat('High', maxPoint.value, config)}
+      </div>
+    `;
+  }
+
+  private _renderStat(label: string, value: number | undefined, config: RealElectricityPriceCardConfig): TemplateResult {
+    return html`
+      <div class="price-stat family-telemetry-cell">
+        <span class="family-telemetry-label">${label}</span>
+        ${isAvailableValue(value)
+          ? html`<span class="family-telemetry-value">${formatHassNumber(this.hass, value, { digits: priceDecimals(config) })} <span class="price-unit">${priceUnit(config)}</span></span>`
+          : html`<span class="family-telemetry-value family-unavailable">${UNAVAILABLE_TEXT}</span>`}
       </div>
     `;
   }
@@ -699,6 +740,8 @@ class RealElectricityPriceCard extends LitElement {
   private _renderChart(
     config: RealElectricityPriceCardConfig,
     box: ChartBox,
+    scale: number,
+    axisLabels: string[],
     points: ChartPoint[],
     selected: ChartPoint,
     minPoint: ChartPoint,
@@ -715,7 +758,7 @@ class RealElectricityPriceCard extends LitElement {
     const plotWidth = box.width - box.left - box.right;
     const barSlotWidth = plotWidth / CHART_HOURS;
     const barWidth = Math.max(2, Math.min(14, barSlotWidth * 0.9));
-    const ticks = domainTicks(domain);
+    const ticks = domainTicks(domain, (box.width - box.left - box.right) / scale);
     const currentX = xForTimestamp(Date.now(), domain, box);
     const showCurrent = config.show_current_marker !== false && currentX >= box.left && currentX <= box.width - box.right;
     const minLabelX = intervalCenterX(minPoint, domain, box);
@@ -738,13 +781,14 @@ class RealElectricityPriceCard extends LitElement {
         class="price-chart"
         viewBox=${`0 0 ${box.width} ${box.height}`}
         preserveAspectRatio="none"
+        style=${`--rep-text-scale:${scale.toFixed(4)};`}
         role="slider"
         tabindex="0"
         aria-label="Electricity price interval"
         aria-valuemin="0"
         aria-valuemax=${points.length - 1}
         aria-valuenow=${pointIndexAtTimestamp(points, selected.timestamp)}
-        aria-valuetext=${`${formatDateTime(this.hass, selected.timestamp)} ${formatPrice(selected.value, config)}`}
+        aria-valuetext=${`${formatDateTime(this.hass, selected.timestamp)} ${formatPrice(this.hass, selected.value, config)}`}
         @keydown=${(ev: KeyboardEvent) => this._selectKeyboard(ev, points, selected.timestamp)}
         @pointerdown=${(ev: PointerEvent) => this._selectPoint(ev, points, box, selector, domain)}
         @pointermove=${(ev: PointerEvent) => this._selectPoint(ev, points, box, selector, domain)}
@@ -761,39 +805,37 @@ class RealElectricityPriceCard extends LitElement {
             ${lineColorStops}
           </linearGradient>
         </defs>
-        ${this._renderGrid(config, box, range, ticks, domain)}
+        ${this._renderGrid(box, scale, axisLabels, ticks, domain)}
         ${type === 'line'
           ? this._renderLineChart(points, baseline, gradientId, lineGradientId, domain, box)
           : this._renderBarChart(points, zeroY, barWidth, barSlotWidth, selected, config, cheapThreshold, now)}
         ${showCurrent ? svg`<line class="price-current-line" x1=${currentX} x2=${currentX} y1=${box.top} y2=${baseline}></line>` : nothing}
         ${config.show_extremes === false ? nothing : svg`
-          <text class="price-extreme" x=${minLabelX} y=${Math.max(11, minPoint.y - 9)}>L</text>
-          <text class="price-extreme" x=${maxLabelX} y=${Math.max(11, maxPoint.y - 9)}>H</text>
+          <text class="price-extreme" x=${minLabelX} y=${Math.max(11 * scale, minPoint.y - (9 * scale))}>L</text>
+          <text class="price-extreme" x=${maxLabelX} y=${Math.max(11 * scale, maxPoint.y - (9 * scale))}>H</text>
         `}
         <line class="price-selected-line" x1=${selected.x} x2=${selected.x} y1=${box.top} y2=${baseline}></line>
-        <title>${formatDateTime(this.hass, selected.timestamp)} ${formatPrice(selected.value, config)}</title>
+        <title>${formatDateTime(this.hass, selected.timestamp)} ${formatPrice(this.hass, selected.value, config)}</title>
         <desc>${points.length} available hourly electricity price points in a fixed ${CHART_HOURS}-hour chart window.</desc>
       </svg>
     `;
   }
 
   private _renderGrid(
-    config: RealElectricityPriceCardConfig,
     box: ChartBox,
-    range: PriceRange,
+    scale: number,
+    axisLabels: string[],
     ticks: number[],
     domain: ChartDomain,
   ): TemplateResult[] {
     const baseline = box.height - box.bottom;
-    const lines = horizontalLineCount(config);
+    const lines = axisLabels.length;
     return [
-      ...Array.from({ length: lines }, (_, index) => {
-        const ratio = 1 - (index / (lines - 1));
+      ...axisLabels.map((label, index) => {
         const y = box.top + (index / (lines - 1)) * (baseline - box.top);
-        const value = range.min + ((range.max - range.min) * ratio);
         return svg`
           <line class="price-grid-line" x1=${box.left} x2=${box.width - box.right} y1=${y} y2=${y}></line>
-          <text class="price-axis-label" x=${box.width - 2} y=${y}>${formatAxisPrice(value, config)}</text>
+          <text class="price-axis-label" x=${box.width - (2 * scale)} y=${y}>${label}</text>
         `;
       }),
       ...ticks.map((timestamp, index) => {
@@ -805,7 +847,7 @@ class RealElectricityPriceCard extends LitElement {
             : '';
         return svg`
           <line class="price-time-line" x1=${x} x2=${x} y1=${box.top} y2=${baseline}></line>
-          <text class=${`price-time-label${edgeClass}`} x=${x} y=${box.height - 6}>${formatTimeLabel(this.hass, timestamp)}</text>
+          <text class=${`price-time-label${edgeClass}`} x=${x} y=${box.height - (6 * scale)}>${formatDateTime(this.hass, timestamp)}</text>
         `;
       }),
     ];
@@ -908,11 +950,10 @@ class RealElectricityPriceCard extends LitElement {
     showEntityMoreInfo(this, entityId);
   }
 
-  static styles = [designTokens, familyStyles, css`
+  static styles = [designTokens, familyStyles, componentStyles, headerStyles, telemetryStyles, css`
     :host {
       display: block;
       color: var(--primary-text-color);
-      font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
     }
 
     ha-card.price-card {
@@ -925,13 +966,7 @@ class RealElectricityPriceCard extends LitElement {
     .price-content {
       padding: var(--tile-padding-large);
       border-radius: inherit;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(0, 0, 0, 0.08));
       box-sizing: border-box;
-    }
-
-    .price-error {
-      color: var(--error-color, #ff5252);
-      font-weight: 700;
     }
 
     .price-head {
@@ -951,11 +986,8 @@ class RealElectricityPriceCard extends LitElement {
       border: 0;
       background: transparent;
       color: var(--primary-text-color);
-      font: inherit;
-      font-size: 18px;
-      font-weight: 700;
+      font-family: inherit;
       min-height: 44px;
-      line-height: 1.18;
       text-align: left;
       cursor: pointer;
     }
@@ -968,7 +1000,7 @@ class RealElectricityPriceCard extends LitElement {
     }
 
     .price-title:focus-visible {
-      outline: 2px solid var(--primary-color);
+      outline: 3px solid var(--primary-color);
       outline-offset: 3px;
       border-radius: 4px;
     }
@@ -1006,40 +1038,17 @@ class RealElectricityPriceCard extends LitElement {
     }
 
     .price-stats {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: var(--tile-padding);
+      --family-telemetry-columns: 4;
       margin-bottom: var(--large-gap);
-    }
-
-    .price-stat {
-      min-width: 0;
-      padding: 8px 10px;
       border-radius: var(--tile-border-radius);
       background: var(--family-tile);
-      box-sizing: border-box;
     }
 
-    .price-stat span,
-    .price-stat strong {
-      display: block;
-      overflow-wrap: anywhere;
-      white-space: normal;
-    }
-
-    .price-stat span {
+    .price-unit {
       color: var(--secondary-text-color);
       font-size: 11px;
       font-weight: 500;
-      line-height: 1.1;
-    }
-
-    .price-stat strong {
-      margin-top: 3px;
-      color: var(--primary-text-color);
-      font-size: 13px;
-      font-weight: 600;
-      line-height: 1.1;
+      white-space: nowrap;
     }
 
     .price-chart-frame {
@@ -1107,7 +1116,7 @@ class RealElectricityPriceCard extends LitElement {
     }
 
     .price-selected-line {
-      stroke: rgba(255, 255, 255, 0.36);
+      stroke: color-mix(in srgb, var(--primary-text-color) 36%, transparent);
       stroke-width: 1;
       vector-effect: non-scaling-stroke;
     }
@@ -1119,7 +1128,7 @@ class RealElectricityPriceCard extends LitElement {
 
     .price-bar-selected {
       opacity: 1;
-      stroke: rgba(255, 255, 255, 0.72);
+      stroke: color-mix(in srgb, var(--primary-text-color) 72%, transparent);
       stroke-width: 1;
       vector-effect: non-scaling-stroke;
     }
@@ -1145,22 +1154,19 @@ class RealElectricityPriceCard extends LitElement {
       vector-effect: non-scaling-stroke;
     }
 
+    /* SVG text scales with the viewBox; --rep-text-scale keeps labels at 11 CSS pixels. */
     .price-axis-label,
     .price-time-label,
     .price-extreme {
       fill: var(--secondary-text-color);
-      font-size: 9px;
-      font-weight: 750;
+      font-size: calc(11px * var(--rep-text-scale, 1));
+      font-weight: 600;
       text-anchor: middle;
       dominant-baseline: middle;
     }
 
     .price-axis-label {
       text-anchor: end;
-    }
-
-    .price-time-label {
-      font-size: 7.6px;
     }
 
     .price-time-label-start {
@@ -1173,8 +1179,6 @@ class RealElectricityPriceCard extends LitElement {
 
     .price-extreme {
       fill: var(--primary-text-color);
-      font-size: 11px;
-      font-weight: 600;
     }
 
     .price-selected-dot {
@@ -1186,10 +1190,10 @@ class RealElectricityPriceCard extends LitElement {
       min-height: 15px;
       box-sizing: border-box;
       aspect-ratio: 1 / 1;
-      border: 1px solid rgba(255, 255, 255, 0.54);
+      border: 1px solid color-mix(in srgb, var(--primary-text-color) 54%, transparent);
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.28);
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
+      background: color-mix(in srgb, var(--card-background-color, #000) 60%, transparent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-text-color) 18%, transparent);
       transform: translate(-50%, -50%);
       pointer-events: none;
     }
@@ -1200,12 +1204,12 @@ class RealElectricityPriceCard extends LitElement {
       inset: 4px;
       border-radius: 50%;
       background: var(--primary-text-color);
-      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--card-background-color, #000) 40%, transparent);
     }
 
     .price-card { container-type:inline-size; }
     .price-chart:focus-visible { outline:3px solid var(--primary-color);outline-offset:-3px;border-radius:8px; }
-    .price-stat strong { font-variant-numeric:tabular-nums;line-height:1.4; }
+    .price-stat .family-telemetry-value { line-height:1.4; }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important;transition:none!important; } }
     @container (max-width: 480px) {
       .price-content {
@@ -1218,11 +1222,14 @@ class RealElectricityPriceCard extends LitElement {
 
       .price-title {
         max-width: 64%;
-        font-size: 18px;
       }
 
       .price-stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        --family-telemetry-columns: 2;
+      }
+
+      .price-stat:nth-child(2n) {
+        border-inline-end: 0;
       }
     }
   `];
@@ -1398,7 +1405,6 @@ class RealElectricityPriceCardEditor extends LitElement {
       display: grid;
       gap: 5px;
       color: var(--primary-text-color);
-      font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
       font-size: 12px;
       font-weight: 700;
     }
@@ -1414,6 +1420,8 @@ class RealElectricityPriceCardEditor extends LitElement {
       background: var(--secondary-background-color, rgba(255, 255, 255, 0.04));
       color: var(--primary-text-color);
       font: inherit;
+      /* 16px keeps iOS from zooming the dashboard when a field is focused. */
+      font-size: 16px;
       font-weight: 500;
     }
 
@@ -1425,7 +1433,6 @@ class RealElectricityPriceCardEditor extends LitElement {
     textarea {
       min-height: 96px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 12px;
     }
 
     h3 {

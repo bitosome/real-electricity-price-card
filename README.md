@@ -138,9 +138,11 @@ The card reads `actual_price` first, then falls back to `price`, `y`, or `nord_p
 
 ## Shared UI library and accessible chart
 
-Version 0.1.19 bundles the pinned [`@bitosome/ha-card-ui`](https://github.com/bitosome/ha-card-ui) 1.0.0 package. Space Hub remains the visual reference. Shared tokens, typography, theme surfaces and native HA more-info behavior come from the library; `src/shared` import paths are compatibility re-exports, not vendored copies.
+Version 0.2.0 bundles the pinned [`@bitosome/ha-card-ui`](https://github.com/bitosome/ha-card-ui) 1.4.0 package. Space Hub remains the visual reference. Shared tokens, typography, theme surfaces and native HA more-info behavior come from the library; `src/shared` import paths are compatibility re-exports, not vendored copies.
 
 The chart remains directly interactive: arrow keys, Home/End and Page Up/Down select intervals; touch preserves vertical scrolling and horizontal scrubbing. Selected time, sign and unit stay visible, missing readings remain gaps, and negative prices remain negative. A chart does not need an extra modal merely to match device cards.
+
+Chart labels stay at 11 px whatever the card width, and time ticks thin out on narrow cards. Prices, axis labels and times follow the Home Assistant profile (language, number format, 12/24-hour clock and time zone). A missing price reads "Unavailable" without a unit, and a card without price data shows a shared notice instead of red text.
 
 Run `npm run check` for typecheck, build and interaction regressions. Tagged releases publish the self-contained dashboard bundle. Shared library updates require an explicit dependency/lockfile update, rebuild and card release; no extra HACS resource is required.
 
