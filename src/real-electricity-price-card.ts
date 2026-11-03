@@ -27,8 +27,8 @@ const CHART_HOURS = 48;
 const CHART_WIDTH = 360;
 // Chart labels are 11 CSS pixels, so label room is estimated in pixels and converted to viewBox units.
 const AXIS_LABEL_CHAR_PX = 5.8;
-const TIME_LABEL_SPACING_PX = 96;
-const TICK_STEP_HOURS = [6, 8, 12, 16, 24];
+const TIME_LABEL_GAP_PX = 8;
+const TICK_STEP_HOURS = [6, 8, 12, 16, 24, 48];
 
 type SelectorMode = 'hover' | 'click';
 
@@ -425,11 +425,24 @@ function intervalCenterPoint(point: ChartPoint, domain: ChartDomain, box: ChartB
   };
 }
 
-function domainTicks(domain: ChartDomain, plotWidthPx: number): number[] {
-  const maxTicks = Math.floor(plotWidthPx / TIME_LABEL_SPACING_PX) + 1;
-  const step = TICK_STEP_HOURS.find((hours) => (CHART_HOURS / hours) + 1 <= maxTicks)
-    ?? TICK_STEP_HOURS[TICK_STEP_HOURS.length - 1];
-  return Array.from({ length: (CHART_HOURS / step) + 1 }, (_, index) => domain.start + (index * step * HOUR_MS));
+/**
+ * Edge labels are anchored inwards, so each neighbouring pair needs the facing extents of
+ * both labels plus a gap. Widths use the same per-character estimate as the axis labels.
+ */
+function domainTicks(domain: ChartDomain, plotWidthPx: number, formatLabel: (timestamp: number) => string): number[] {
+  const ticksForStep = (step: number): number[] =>
+    Array.from({ length: (CHART_HOURS / step) + 1 }, (_, index) => domain.start + (index * step * HOUR_MS));
+  const fits = (ticks: number[]): boolean => {
+    const spacing = plotWidthPx / (ticks.length - 1);
+    const widths = ticks.map((timestamp) => formatLabel(timestamp).length * AXIS_LABEL_CHAR_PX);
+    return widths.slice(1).every((width, index) => {
+      const left = index === 0 ? widths[0] : widths[index] / 2;
+      const right = index + 1 === ticks.length - 1 ? width : width / 2;
+      return left + right + TIME_LABEL_GAP_PX <= spacing;
+    });
+  };
+  const step = TICK_STEP_HOURS.find((hours) => fits(ticksForStep(hours))) ?? TICK_STEP_HOURS[TICK_STEP_HOURS.length - 1];
+  return ticksForStep(step);
 }
 
 function axisLabelValues(config: RealElectricityPriceCardConfig, range: PriceRange): number[] {
@@ -758,7 +771,7 @@ class RealElectricityPriceCard extends LitElement {
     const plotWidth = box.width - box.left - box.right;
     const barSlotWidth = plotWidth / CHART_HOURS;
     const barWidth = Math.max(2, Math.min(14, barSlotWidth * 0.9));
-    const ticks = domainTicks(domain, (box.width - box.left - box.right) / scale);
+    const ticks = domainTicks(domain, plotWidth / scale, (timestamp) => formatDateTime(this.hass, timestamp));
     const currentX = xForTimestamp(Date.now(), domain, box);
     const showCurrent = config.show_current_marker !== false && currentX >= box.left && currentX <= box.width - box.right;
     const minLabelX = intervalCenterX(minPoint, domain, box);

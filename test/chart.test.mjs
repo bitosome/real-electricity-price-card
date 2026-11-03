@@ -28,10 +28,18 @@ assert.match(card.shadowRoot.querySelectorAll('.price-stat .family-telemetry-val
 const axis=()=>[...card.shadowRoot.querySelectorAll('.price-axis-label')].map(t=>t.textContent);
 assert.ok(axis().every(t=>/€$/.test(t)),'axis uses the configured unit');
 const ticks=()=>card.shadowRoot.querySelectorAll('.price-time-label').length;
-assert.equal(ticks(),4,'default width keeps four time labels');
-card._chartWidth=280;await card.updateComplete;assert.equal(ticks(),3,'narrow charts reduce tick density');
+assert.equal(ticks(),3,'default width keeps three time labels');
+card._chartWidth=200;await card.updateComplete;assert.equal(ticks(),2,'narrow charts reduce tick density');
+card._chartWidth=280;await card.updateComplete;
 assert.match(card.shadowRoot.querySelector('.price-chart').getAttribute('style'),/--rep-text-scale:1\.2857/,'chart text is scaled back to CSS pixels');
 card._chartWidth=720;await card.updateComplete;assert.equal(ticks(),7,'wide charts show more time labels');
+// 11px/600 labels measure about 5.6 px per character ("Nov 3, 12:00 AM" is 84 px); edge labels extend inwards.
+const labelSpans=width=>[...card.shadowRoot.querySelectorAll('.price-time-label')].map(t=>{const x=Number(t.getAttribute('x'))*width/360,w=t.textContent.length*5.6;return t.classList.contains('price-time-label-start')?[x,x+w]:t.classList.contains('price-time-label-end')?[x-w,x]:[x-w/2,x+w/2];});
+card.hass={...card.hass,locale:{language:'en',time_format:'12'}};
+for(const width of [280,300,340,360,400,415,480,720,1080]){card._chartWidth=width;await card.updateComplete;const spans=labelSpans(width);assert.ok(spans.length>=2);
+  spans.slice(1).forEach((span,i)=>assert.ok(span[0]>=spans[i][1],`12-hour time labels do not overlap at ${width}px`));}
+card._chartWidth=360;await card.updateComplete;assert.equal(ticks(),3,'12-hour labels fit three ticks at default width');
+card.hass={...card.hass,locale:{language:'en-GB',time_format:'24'}};card._chartWidth=720;await card.updateComplete;
 card.setConfig({type:'custom:real-electricity-price-card',name:'Electricity',unit:'c/kWh',price_decimals:2,axis_decimals:1});await card.updateComplete;
 assert.ok(axis().every(t=>/c$/.test(t)&&!t.includes('€')),'axis follows a non-euro unit');
 const styles=card.constructor.styles.flat().map(s=>s.cssText).join('');assert.match(styles,/touch-action:\s*pan-y/);assert.match(styles,/@container/);
